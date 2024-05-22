@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package main;
+option go_package = "main/rpc";
+
+service Metrics {
+  rpc WriteMetrics(Metric) returns (Status);
+}
+
+message Status {
+  int32 status= 1; 
+}
+
+message Metric {
+    string name = 1;
+    int32 age = 2;
+}
