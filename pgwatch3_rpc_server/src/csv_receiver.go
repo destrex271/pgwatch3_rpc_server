@@ -6,9 +6,9 @@ import(
     "log"
 )
 
-type TextReceiver struct{}
+type CSVReceiver struct{}
 
-func (r *TextReceiver) UpdateMetrics(measurement MeasurementMessage, reply *int){
+func (r *CSVReceiver) UpdateMetrics(measurement MeasurementMessage, reply *int){
     // Write Metrics in a text file
     file, err := os.Open("measurements.txt")
     if err != nil{
