@@ -23,7 +23,7 @@ func (r *TextReceiver) UpdateMetrics(measurement *MeasurementMessage, status *in
     writer := bufio.NewWriter(file)
     defer file.Close()
 
-    output := "DBName: " + measurement.DBName + "\n" + "Metric: " + measurement.MetricName + "======================================"
+    output := "DBName: " + measurement.DBName + "\n" + "Metric: " + measurement.MetricName + "\n======================================\n"
 
     fmt.Fprintln(writer, output)
     writer.Flush()
