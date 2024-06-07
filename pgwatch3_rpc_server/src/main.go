@@ -8,7 +8,8 @@ import (
 )
 
 func main(){
-    server := new(TextReceiver)
+    // server := new(TextReceiver)
+    server := new(CSVReceiver)
     rpc.Register(server)
     rpc.HandleHTTP()
 
