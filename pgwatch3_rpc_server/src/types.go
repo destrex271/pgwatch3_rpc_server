@@ -31,3 +31,13 @@ type WriteRequest struct{
     PgwatchID       int
     Msg             MeasurementMessage
 }
+
+const (
+    CSV = 1
+    TEXT = 2
+    NONE = -1
+)
+
+type Receiver struct{
+    sink_type int
+}
