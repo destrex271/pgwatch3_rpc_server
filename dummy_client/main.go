@@ -10,6 +10,12 @@ func main(){
     measurements := new(MeasurementMessage)
     measurements.DBName = "Test"
     measurements.MetricName = "Age"
+
+    writeRequest := new(WriteRequest)
+    writeRequest.Msg = *measurements
+
+    writeRequest.FileName = "measurements_abc.txt"
+
     client, err := rpc.DialHTTP("tcp", "localhost"+":1234")
 
     if err != nil{
@@ -17,7 +23,7 @@ func main(){
     }
 
     var status int 
-    err = client.Call("TextReceiver.UpdateMetrics", &measurements, &status)
+    err = client.Call("TextReceiver.UpdateMetrics", &writeRequest, &status)
     if err != nil{
         log.Fatal(err)
     }
