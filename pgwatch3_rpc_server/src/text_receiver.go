@@ -8,7 +8,7 @@ import(
 
 type TextReceiver struct{}
 
-func (r *TextReceiver) UpdateMetrics(measurement MeasurementMessage, reply *int){
+func (r *TextReceiver) UpdateMetrics(measurement MeasurementMessage, status *int){
     // Write Metrics in a text file
     file, err := os.Open("measurements.txt")
     if err != nil{
