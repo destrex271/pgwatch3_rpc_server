@@ -11,6 +11,7 @@ import (
 func setupRPCServer(){}
 
 func main(){
+
     
     receiverType := flag.String("type", "", "The type of sink that you want to keep this node as.\nAvailable options:\n\t- csv\n\t- text")
     flag.Parse()
@@ -27,7 +28,7 @@ func main(){
         log.Fatal("No Sink Type was provided. Please use the --type option")
         return
     }
-
+  
     rpc.HandleHTTP()
 
     listener, err := net.Listen("tcp", ":1234")
