@@ -10,7 +10,7 @@ import (
 
 type CSVReceiver struct{}
 
-func (r *CSVReceiver) UpdateMetrics(writeRequest *WriteRequest, reply *int) error{
+func (r *CSVReceiver) UpdateMeasurements(writeRequest *WriteRequest, reply *int) error{
     // Open/Create Output file
     fileName := strings.Split(writeRequest.FileName, ".")[0] + "_" + fmt.Sprint(writeRequest.PgwatchID) + ".csv" 
     file, err := os.OpenFile(fileName, os.O_APPEND | os.O_CREATE | os.O_WRONLY, 0644)

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"log"
 	"net"
@@ -11,8 +12,19 @@ import (
 func (receiver *Receiver) UpdateMeasurements(writeRequest *WriteRequest, status *int) error {
 	if receiver.sink_type == CSV {
 		writer := new(CSVReceiver)
-		writer.UpdateMetrics(writeRequest, status)
-	}
+        err := writer.UpdateMeasurements(writeRequest, status)
+        if err != nil{
+            return err
+        }
+	}else if receiver.sink_type == TEXT{
+        writer := new(TextReceiver)
+        err := writer.UpdateMeasurements(writeRequest, status)
+        if err != nil{
+            return err
+        }
+    }else{
+        return errors.New("No writer was specified")
+    }
 	return nil
 }
 

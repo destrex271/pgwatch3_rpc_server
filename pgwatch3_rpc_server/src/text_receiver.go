@@ -9,7 +9,7 @@ import (
 
 type TextReceiver struct{}
 
-func (r *TextReceiver) UpdateMetrics(writeRequest *WriteRequest, status *int) error{
+func (r *TextReceiver) UpdateMeasurements(writeRequest *WriteRequest, status *int) error{
     // Write Metrics in a text file
     fileName := writeRequest.FileName + "_" + fmt.Sprint(writeRequest.PgwatchID) + ".txt"
     file, err := os.OpenFile(fileName, os.O_APPEND | os.O_CREATE | os.O_WRONLY, 0644)

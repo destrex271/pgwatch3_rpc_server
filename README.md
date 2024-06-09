@@ -11,7 +11,10 @@ Later on we'll add command line arguments to specify the sink type.
 To start the receiver:
 
 ```bash
-pgwatch3_rpc_server/src git:(main)$ go run .go run .
+# For Text sinks
+pgwatch3_rpc_server/src git:(main)$ go run .go run . --type=text
+# For CSV sinks
+pgwatch3_rpc_server/src git:(main)$ go run .go run . --type=csv
 ```
 
 
