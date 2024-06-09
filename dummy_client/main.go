@@ -23,7 +23,7 @@ func main(){
     }
 
     var status int 
-    err = client.Call("TextReceiver.UpdateMetrics", &writeRequest, &status)
+    err = client.Call("Receiver.UpdateMeasurements", &writeRequest, &status)
     if err != nil{
         log.Fatal(err)
     }
