@@ -27,7 +27,6 @@ type MeasurementMessage struct {
 }
 
 type WriteRequest struct{
-    FileName        string
     PgwatchID       int
     Msg             MeasurementMessage
 }

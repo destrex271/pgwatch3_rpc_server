@@ -31,7 +31,13 @@ func (receiver *Receiver) UpdateMeasurements(writeRequest *WriteRequest, status 
 func main() {
 
 	receiverType := flag.String("type", "", "The type of sink that you want to keep this node as.\nAvailable options:\n\t- csv\n\t- text")
+    port := flag.String("port", "-1", "Specify the port where you want you sink to receive the measaurements on.")
 	flag.Parse()
+
+    if *port == "-1"{
+        log.Fatal("[ERROR]: No Port Specified")
+        return
+    }
 
 	server := new(Receiver)
 
@@ -43,14 +49,14 @@ func main() {
 	} else {
 		// Throw Error
 		server.sink_type = NONE
-		log.Fatal("No Sink Type was provided. Please use the --type option")
+        log.Fatal("[ERROR]: No Sink Type was provided. Please use the --type option")
 		return
 	}
 
 	rpc.Register(server)
 	rpc.HandleHTTP()
 
-	listener, err := net.Listen("tcp", ":1234")
+    listener, err := net.Listen("tcp", "0.0.0.0:" + *port)
 
 	if err != nil {
 		log.Fatal(err)
