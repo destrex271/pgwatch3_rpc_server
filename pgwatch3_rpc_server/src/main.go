@@ -40,6 +40,7 @@ func main() {
         return
     }
 
+    log.Println("Setting up Server.....")
 	server := new(Receiver)
 
 	if *receiverType == "csv" {
@@ -55,10 +56,13 @@ func main() {
 	}
 
 	rpc.Register(server)
+    log.Println("RPC registered")
 	rpc.HandleHTTP()
 
+    log.Println("listening...")
     listener, err := net.Listen("tcp", "0.0.0.0:" + *port)
 
+    log.Println("Found -> ", listener)
 	if err != nil {
 		log.Fatal(err)
 	}
