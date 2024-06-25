@@ -10,6 +10,7 @@ import (
 )
 
 func (receiver *Receiver) UpdateMeasurements(writeRequest *WriteRequest, status *int) error {
+    log.Print("Received metrics: " + writeRequest.Msg.DBName)
 	if receiver.sink_type == CSV {
 		writer := new(CSVReceiver)
         err := writer.UpdateMeasurements(writeRequest, status)
