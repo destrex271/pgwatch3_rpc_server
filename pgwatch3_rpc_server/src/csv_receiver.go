@@ -9,15 +9,28 @@ import (
 
 type CSVReceiver struct{}
 
-func (r *CSVReceiver) UpdateMeasurements(writeRequest *WriteRequest, reply *int) error{
+/*
+* Structure for CSV storage:
+*   - Database Folder
+*       - Metric1.csv
+*       - Metric2.csv
+*/
+
+func (r *CSVReceiver) UpdateMeasurements(writeRequest *WriteRequest, reply *int, fullPath string) error{
     // Open/Create Output file
-    fileName := fmt.Sprint(writeRequest.PgwatchID) + ".csv" 
-    file, err := os.OpenFile(fileName, os.O_APPEND | os.O_CREATE | os.O_WRONLY, 0644)
+    superFolder := writeRequest.Msg.DBName + "-" + fmt.Sprint(writeRequest.PgwatchID)
+    fileName := writeRequest.Msg.MetricName + ".csv" 
+
+    // Create Database folder if does not exist
+    err := os.MkdirAll(fullPath + "/" + superFolder, os.ModePerm)
+
+    file, err := os.OpenFile(fullPath + "/" + superFolder + "/" + fileName, os.O_APPEND | os.O_CREATE | os.O_WRONLY, 0644)
 
     if err != nil{
         log.Fatal("Unable to access file. Error: ", err)
         return err
     }
+
 
     writer := csv.NewWriter(file)
 

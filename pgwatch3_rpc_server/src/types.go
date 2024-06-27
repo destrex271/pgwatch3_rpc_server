@@ -39,4 +39,5 @@ const (
 
 type Receiver struct{
     sink_type int
+    storage_folder string // Only for CSV
 }

@@ -11,9 +11,12 @@ import (
 
 func (receiver *Receiver) UpdateMeasurements(writeRequest *WriteRequest, status *int) error {
     log.Print("Received metrics: " + writeRequest.Msg.DBName)
+    if len(writeRequest.Msg.DBName) == 0{
+        return nil
+    }
 	if receiver.sink_type == CSV {
 		writer := new(CSVReceiver)
-        err := writer.UpdateMeasurements(writeRequest, status)
+        err := writer.UpdateMeasurements(writeRequest, status, receiver.storage_folder)
         if err != nil{
             return err
         }
@@ -33,6 +36,7 @@ func main() {
 
 	receiverType := flag.String("type", "", "The type of sink that you want to keep this node as.\nAvailable options:\n\t- csv\n\t- text")
     port := flag.String("port", "-1", "Specify the port where you want you sink to receive the measaurements on.")
+    storage_folder := flag.String("rootFolder", ".", "Only for formats like CSV...\n")
 	flag.Parse()
 
     if *port == "-1"{
@@ -45,6 +49,7 @@ func main() {
 
 	if *receiverType == "csv" {
 		server.sink_type = CSV
+        server.storage_folder = *storage_folder
 	} else if *receiverType == "text" {
 		// Only for testing
 		server.sink_type = TEXT
