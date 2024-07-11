@@ -9,9 +9,9 @@ import (
 
 type TextReceiver struct{}
 
-func (r *TextReceiver) UpdateMeasurements(writeRequest *WriteRequest, status *int) error{
+func (r *TextReceiver) UpdateMeasurements(msg *MeasurementMessage, status *int) error{
     // Write Metrics in a text file
-    fileName := fmt.Sprint(writeRequest.PgwatchID) + ".txt"
+    fileName := fmt.Sprint(msg.CustomTags["pgwatchId"]) + ".txt"
     file, err := os.OpenFile(fileName, os.O_APPEND | os.O_CREATE | os.O_WRONLY, 0644)
 
     if err != nil{
@@ -23,7 +23,7 @@ func (r *TextReceiver) UpdateMeasurements(writeRequest *WriteRequest, status *in
     writer := bufio.NewWriter(file)
     defer file.Close()
 
-    output := "DBName: " + writeRequest.Msg.DBName + "\n" + "Metric: " + writeRequest.Msg.MetricName + "\n======================================\n"
+    output := "DBName: " + msg.DBName + "\n" + "Metric: " + msg.MetricName + "\n======================================\n"
 
     fmt.Fprintln(writer, output)
     writer.Flush()

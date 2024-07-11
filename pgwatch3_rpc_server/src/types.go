@@ -26,18 +26,21 @@ type MeasurementMessage struct {
 	SystemIdentifier string
 }
 
-type WriteRequest struct{
-    PgwatchID       int
-    Msg             MeasurementMessage
-}
-
 const (
     CSV = 1
     TEXT = 2
     NONE = -1
 )
 
+type SyncReq struct {
+	OPR        string
+	DBName     string
+	PgwatchID  string
+	MetricName string
+}
+
 type Receiver struct{
     sink_type int
     storage_folder string // Only for CSV
+    SyncChannel chan SyncReq // Channel to receive sync signals
 }

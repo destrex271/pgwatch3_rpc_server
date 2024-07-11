@@ -16,10 +16,10 @@ type CSVReceiver struct{}
 *       - Metric2.csv
 */
 
-func (r *CSVReceiver) UpdateMeasurements(writeRequest *WriteRequest, reply *int, fullPath string) error{
+func (r *CSVReceiver) UpdateMeasurements(msg *MeasurementMessage, reply *int, fullPath string, primary_receiver *Receiver) error{
     // Open/Create Output file
-    superFolder := writeRequest.Msg.DBName + "-" + fmt.Sprint(writeRequest.PgwatchID)
-    fileName := writeRequest.Msg.MetricName + ".csv" 
+    superFolder := msg.DBName + "-" + fmt.Sprint(msg.CustomTags["pgwatchId"])
+    fileName := msg.MetricName + ".csv" 
 
     // Create Database folder if does not exist
     err := os.MkdirAll(fullPath + "/" + superFolder, os.ModePerm)
@@ -35,17 +35,17 @@ func (r *CSVReceiver) UpdateMeasurements(writeRequest *WriteRequest, reply *int,
     writer := csv.NewWriter(file)
 
     record := [...]string{
-        writeRequest.Msg.DBName,
-        writeRequest.Msg.SourceType,
-        writeRequest.Msg.MetricName,
+        msg.DBName,
+        msg.SourceType,
+        msg.MetricName,
         "CustomTags",
-        // TODO: This is a map, need to setup a different way to write this field, writeRequest.Msg.CustomTags,
+        // TODO: This is a map, need to setup a different way to write this field, msg.CustomTags,
         "Measurements",
         // TODO: Measurements Object, need to setup a way to retrieve string version, Data            
         "Metrics",
         // TODO: Metric field, need to setup a way to retrieve as string, MetricDef        
-        writeRequest.Msg.RealDbname,
-        writeRequest.Msg.SystemIdentifier,
+        msg.RealDbname,
+        msg.SystemIdentifier,
     }
 
     // Writing measurements to CSV

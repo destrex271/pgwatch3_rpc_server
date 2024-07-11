@@ -9,20 +9,20 @@ import (
 	"net/rpc"
 )
 
-func (receiver *Receiver) UpdateMeasurements(writeRequest *WriteRequest, status *int) error {
-    log.Print("Received metrics: " + writeRequest.Msg.DBName)
-    if len(writeRequest.Msg.DBName) == 0{
+func (receiver *Receiver) UpdateMeasurements(msg *MeasurementMessage, status *int) error {
+    log.Print("Received metrics: " + msg.DBName)
+    if len(msg.DBName) == 0{
         return nil
     }
 	if receiver.sink_type == CSV {
 		writer := new(CSVReceiver)
-        err := writer.UpdateMeasurements(writeRequest, status, receiver.storage_folder)
+        err := writer.UpdateMeasurements(msg, status, receiver.storage_folder)
         if err != nil{
             return err
         }
 	}else if receiver.sink_type == TEXT{
         writer := new(TextReceiver)
-        err := writer.UpdateMeasurements(writeRequest, status)
+        err := writer.UpdateMeasurements(msg, status)
         if err != nil{
             return err
         }
@@ -32,8 +32,20 @@ func (receiver *Receiver) UpdateMeasurements(writeRequest *WriteRequest, status 
 	return nil
 }
 
+// Gets the sync request from pgwatch3 and adds it to the receiver.SyncChannel
+func (receiver *Receiver) SyncMetricSignal(syncReq *SyncReq, logMsg *string) error {
+    receiver.SyncChannel <- *syncReq
+	return nil
+}
+
+func (receiver *Receiver) GetSyncChannelContent() SyncReq{
+    content := <- receiver.SyncChannel
+    return content
+}
+
 func main() {
 
+    // Important Flags
 	receiverType := flag.String("type", "", "The type of sink that you want to keep this node as.\nAvailable options:\n\t- csv\n\t- text")
     port := flag.String("port", "-1", "Specify the port where you want you sink to receive the measaurements on.")
     storage_folder := flag.String("rootFolder", ".", "Only for formats like CSV...\n")
