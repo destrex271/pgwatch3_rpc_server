@@ -21,6 +21,9 @@ func (r *CSVReceiver) UpdateMeasurements(msg *MeasurementMessage, reply *int, fu
     superFolder := msg.DBName + "-" + fmt.Sprint(msg.CustomTags["pgwatchId"])
     fileName := msg.MetricName + ".csv" 
 
+    val := primary_receiver.GetSyncChannelContent()
+    fmt.Println("SIGNAL" + val.DBName + " " + val.OPR)
+
     // Create Database folder if does not exist
     err := os.MkdirAll(fullPath + "/" + superFolder, os.ModePerm)
 
