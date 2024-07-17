@@ -19,7 +19,7 @@ type CSVReceiver struct{}
 var isSyncSignalHandleActive = false
 
 func HandleSyncSignals(recv *Receiver) {
-	isSyncSignalHandleActive = false
+	isSyncSignalHandleActive = true
 	val := recv.GetSyncChannelContent()
 	if val.OPR == "DELETE" {
 		fmt.Print("DELETE METRIC: ", val.MetricName)
