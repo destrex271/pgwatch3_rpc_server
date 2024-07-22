@@ -1,4 +1,4 @@
-package main
+package sinks
 
 type SQLs map[int]string
 
@@ -40,7 +40,7 @@ type SyncReq struct {
 }
 
 type Receiver struct{
-    sink_type int
-    storage_folder string // Only for CSV
+    SinkType int
+    StorageFolder string // Only for CSV
     SyncChannel chan SyncReq // Channel to receive sync signals
 }
