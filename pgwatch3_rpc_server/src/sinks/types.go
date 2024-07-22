@@ -29,6 +29,7 @@ type MeasurementMessage struct {
 const (
     CSV = 1
     TEXT = 2
+    PARQUET = 3
     NONE = -1
 )
 
@@ -39,7 +40,7 @@ type SyncReq struct {
 	MetricName string
 }
 
-type Receiver struct{
+type Reciever struct{
     SinkType int
     StorageFolder string // Only for CSV
     SyncChannel chan SyncReq // Channel to receive sync signals

@@ -9,6 +9,10 @@ import (
     . "pgwatch3_rpc_receiver/sinks"
 )
 
+func StorageError(){
+    log.Default().Fatal("[ERROR]: No storage location was specified to store metric files")
+}
+
 func main() {
 
 	// Important Flags
@@ -23,16 +27,25 @@ func main() {
 	}
 
 	log.Println("Setting up Server.....")
-	server := new(Receiver)
+	server := new(Reciever)
 
 	server.SyncChannel = make(chan SyncReq, 10)
 	if *receiverType == "csv" {
 		server.SinkType = CSV
+        if len(server.StorageFolder) == 0{
+            StorageError()
+        }
 		server.StorageFolder = *storage_folder
 	} else if *receiverType == "text" {
 		// Only for testing
 		server.SinkType = TEXT
-	} else {
+	} else if *receiverType == "parquet"{
+        server.SinkType = PARQUET
+        if len(server.StorageFolder) == 0{
+            StorageError()
+        }
+        server.StorageFolder = *storage_folder
+    } else {
 		// Throw Error
 		server.SinkType = NONE
 		log.Fatal("[ERROR]: No Sink Type was provided. Please use the --type option")

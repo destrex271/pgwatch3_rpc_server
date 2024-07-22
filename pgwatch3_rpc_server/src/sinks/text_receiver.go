@@ -7,9 +7,9 @@ import (
 	"os"
 )
 
-type TextReceiver struct{}
+type TextReciever struct{}
 
-func (r *TextReceiver) UpdateMeasurements(msg *MeasurementMessage, logMsg *string) error {
+func (r *TextReciever) UpdateMeasurements(msg *MeasurementMessage, logMsg *string) error {
 	// Write Metrics in a text file
 	fileName := fmt.Sprint(msg.CustomTags["pgwatchId"]) + ".txt"
 	file, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
