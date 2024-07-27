@@ -40,7 +40,7 @@ type SyncReq struct {
 	MetricName string
 }
 
-type Reciever struct{
+type Receiver struct{
     SinkType int
     StorageFolder string // Only for CSV
     SyncChannel chan SyncReq // Channel to receive sync signals

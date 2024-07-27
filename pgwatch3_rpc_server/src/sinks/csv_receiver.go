@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-type CSVReciever struct{}
+type CSVReceiver struct{}
 
 /*
 * Structure for CSV storage:
@@ -18,7 +18,7 @@ type CSVReciever struct{}
 
 var isSyncSignalHandleActive = false
 
-func HandleSyncSignals(recv *Reciever) {
+func HandleSyncSignals(recv *Receiver) {
 	isSyncSignalHandleActive = true
 	val := recv.GetSyncChannelContent()
 	if val.OPR == "DELETE" {
@@ -27,7 +27,7 @@ func HandleSyncSignals(recv *Reciever) {
 	isSyncSignalHandleActive = false
 }
 
-func (r *CSVReciever) UpdateMeasurements(msg *MeasurementMessage, logMsg *string, fullPath string, primary_receiver *Reciever) error {
+func (r *CSVReceiver) UpdateMeasurements(msg *MeasurementMessage, logMsg *string, fullPath string, primary_receiver *Receiver) error {
 	// Open/Create Output file
 	superFolder := msg.DBName + "-" + fmt.Sprint(msg.CustomTags["pgwatchId"])
 	fileName := msg.MetricName + ".csv"

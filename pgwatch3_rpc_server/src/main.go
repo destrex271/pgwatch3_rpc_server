@@ -27,12 +27,12 @@ func main() {
 	}
 
 	log.Println("Setting up Server.....")
-	server := new(Reciever)
+	server := new(Receiver)
 
 	server.SyncChannel = make(chan SyncReq, 10)
 	if *receiverType == "csv" {
 		server.SinkType = CSV
-        if len(server.StorageFolder) == 0{
+        if len(*storage_folder) == 0{
             StorageError()
         }
 		server.StorageFolder = *storage_folder
@@ -41,7 +41,7 @@ func main() {
 		server.SinkType = TEXT
 	} else if *receiverType == "parquet"{
         server.SinkType = PARQUET
-        if len(server.StorageFolder) == 0{
+        if len(*storage_folder) == 0{
             StorageError()
         }
         server.StorageFolder = *storage_folder

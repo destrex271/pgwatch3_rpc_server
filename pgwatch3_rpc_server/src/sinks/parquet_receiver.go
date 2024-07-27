@@ -1,11 +1,20 @@
 package sinks
 
-import "log"
+import (
+	"log"
+)
 
+type ParqReceiver struct{}
 
-type ParqReciever struct{}
+type ParquetSchema struct{
+    DBName string
+    SourceType string
+    MetricName string
+    Data string // json string
+    MetricDefinitions string // json string
+    SysIdentifier string
+}
 
-func (r *ParqReciever) UpdateMeasurements(msg *MeasurementMessage, logMsg *string, fullPath string, primary_receiver *Reciever) error {
-    log.Default().Print("Parquet to be implemented yet!")
-    return nil
+func (r *ParqReceiver) UpdateMeasurements(msg *MeasurementMessage, logMsg *string, fullPath string, primary_receiver *Receiver) error {
+    
 }
