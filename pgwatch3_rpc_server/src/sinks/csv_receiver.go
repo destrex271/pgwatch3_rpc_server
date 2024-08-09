@@ -1,11 +1,10 @@
-package main
+package sinks
 
 import (
 	"encoding/csv"
 	"fmt"
 	"log"
 	"os"
-    "encoding/json"
 )
 
 type CSVReceiver struct{}
@@ -50,7 +49,7 @@ func (r *CSVReceiver) UpdateMeasurements(msg *MeasurementMessage, logMsg *string
 	writer := csv.NewWriter(file)
     // Add column Names
     rec := [...]string{
-        "DBName", "SourceType", "MetricName", "Measurements", "CustomTags", "Metric Definitions", 
+        "SourceType", "MetricName", "Measurements", "CustomTags", "Metric Definitions", 
     }
 
     if err := writer.Write(rec[:]); err != nil {
@@ -60,12 +59,11 @@ func (r *CSVReceiver) UpdateMeasurements(msg *MeasurementMessage, logMsg *string
 
     for _, data := range msg.Data{
         record := [...]string{
-            msg.DBName,
             msg.SourceType,
             msg.MetricName,
-            createKeyValuePairs(data),
-            createKeyValuePairs_String(msg.CustomTags),
-            getJson(msg.MetricDef),
+            GetJson(data),
+            GetJson(msg.CustomTags),
+            GetJson(msg.MetricDef),
         }
 
         // Writing measurements to CSV
@@ -85,27 +83,27 @@ func (r *CSVReceiver) UpdateMeasurements(msg *MeasurementMessage, logMsg *string
 	return nil
 }
 
-func createKeyValuePairs(m map[string]any) string {
-    jsonString, err := json.Marshal(m)
-    if err != nil {
-        log.Default().Fatal("Error converting map to JSON string:", err)
-    }
-    return string(jsonString)
-}
-
-
-func createKeyValuePairs_String(m map[string]string) string {
-    jsonString, err := json.Marshal(m)
-    if err != nil {
-        log.Default().Fatal("[ERROR]: Converting map to JSON string:", err)
-    }
-    return string(jsonString)
-}
-
-func getJson(m Metric) string {
-    jsonString, err := json.Marshal(m)
-    if err != nil{
-        log.Default().Fatal("[ERROR]: Unable to parse Metric Definition")
-    }
-    return string(jsonString)
-}
+// func createKeyValuePairs(m map[string]any) string {
+//     jsonString, err := json.Marshal(m)
+//     if err != nil {
+//         log.Default().Fatal("Error converting map to JSON string:", err)
+//     }
+//     return string(jsonString)
+// }
+//
+//
+// func createKeyValuePairs_String(m map[string]string) string {
+//     jsonString, err := json.Marshal(m)
+//     if err != nil {
+//         log.Default().Fatal("[ERROR]: Converting map to JSON string:", err)
+//     }
+//     return string(jsonString)
+// }
+//
+// func getJson(m Metric) string {
+//     jsonString, err := json.Marshal(m)
+//     if err != nil{
+//         log.Default().Fatal("[ERROR]: Unable to parse Metric Definition")
+//     }
+//     return string(jsonString)
+// }

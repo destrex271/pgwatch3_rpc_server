@@ -1,4 +1,4 @@
-package main
+package sinks
 
 type SQLs map[int]string
 
@@ -29,6 +29,7 @@ type MeasurementMessage struct {
 const (
     CSV = 1
     TEXT = 2
+    PARQUET = 3
     NONE = -1
 )
 
@@ -40,7 +41,7 @@ type SyncReq struct {
 }
 
 type Receiver struct{
-    sink_type int
-    storage_folder string // Only for CSV
+    SinkType int
+    StorageFolder string // Only for CSV
     SyncChannel chan SyncReq // Channel to receive sync signals
 }
