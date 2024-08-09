@@ -12,9 +12,9 @@ To start the receiver:
 
 ```bash
 # For Text sinks
-pgwatch3_rpc_server/src git:(main)$ go run .go run . --type=text
+pgwatch3_rpc_server/src git:(main)$ go run . --type=text --port:5050
 # For CSV sinks
-pgwatch3_rpc_server/src git:(main)$ go run .go run . --type=csv
+pgwatch3_rpc_server/src git:(main)$ go run . --type=csv --port:5050
 ```
 
 
