@@ -29,7 +29,13 @@ func (receiver *Receiver) UpdateMeasurements(msg *MeasurementMessage, logMsg *st
 		if err != nil {
 			return err
 		}
-	} else {
+	} else if receiver.SinkType == DUCKDB {
+        writer := new(DuckDBReceiver)
+        err := writer.UpdateMeasurements(msg, logMsg)
+        if err != nil{
+            return err
+        }
+    } else {
 		return errors.New("No writer was specified")
 	}
 	return nil

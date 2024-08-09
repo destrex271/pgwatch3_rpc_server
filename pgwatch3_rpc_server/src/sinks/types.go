@@ -30,6 +30,7 @@ const (
     CSV = 1
     TEXT = 2
     PARQUET = 3
+    DUCKDB = 4
     NONE = -1
 )
 
