@@ -26,6 +26,11 @@ type ParquetSchema struct {
 
 func (r *ParqReceiver) UpdateMeasurements(msg *MeasurementMessage, logMsg *string) error {
 
+	if len(msg.DBName) == 0 {
+		*logMsg = "False Record delieverd"
+		return errors.New("Empty Database!")
+	}
+
 	filename := msg.DBName + ".parquet"
 
 	// Create temporary storage and buffer storage
@@ -47,6 +52,7 @@ func (r *ParqReceiver) UpdateMeasurements(msg *MeasurementMessage, logMsg *strin
 		data_points = []ParquetSchema{}
 	}
 
+	log.Println("[INFO]: Updated Measurements for Database: ", msg.DBName)
 	for _, metric_data := range msg.Data {
 		// populate data
 		data := new(ParquetSchema)
@@ -67,8 +73,6 @@ func (r *ParqReceiver) UpdateMeasurements(msg *MeasurementMessage, logMsg *strin
 	if err != nil {
 		log.Fatal("[ERROR]: Unable to write to file.\nStacktrace -> ", err)
 	}
-
-	log.Println("[INFO]: Closing file")
 
 	return nil
 }
