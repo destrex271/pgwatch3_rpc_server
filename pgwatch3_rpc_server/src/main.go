@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
+	. "pgwatch3_rpc_receiver/examples"
 	. "pgwatch3_rpc_receiver/sinks"
 )
 

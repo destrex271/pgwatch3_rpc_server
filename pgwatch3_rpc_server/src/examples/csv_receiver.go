@@ -1,4 +1,4 @@
-package sinks
+package examples
 
 import (
 	"encoding/csv"
@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	. "pgwatch3_rpc_receiver/sinks"
 )
 
 type CSVReceiver struct {

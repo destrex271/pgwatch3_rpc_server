@@ -1,10 +1,11 @@
-package sinks
+package examples
 
 import (
 	"bufio"
 	"fmt"
 	"log"
 	"os"
+	. "pgwatch3_rpc_receiver/sinks"
 )
 
 type TextReceiver struct {

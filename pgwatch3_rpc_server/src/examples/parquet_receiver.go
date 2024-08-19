@@ -1,4 +1,4 @@
-package sinks
+package examples
 
 import (
 	"errors"
@@ -6,6 +6,8 @@ import (
 	"os"
 
 	// "time"
+
+	. "pgwatch3_rpc_receiver/sinks"
 
 	"github.com/parquet-go/parquet-go"
 )
