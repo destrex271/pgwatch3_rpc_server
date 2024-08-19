@@ -48,6 +48,8 @@ func (r *CSVReceiver) UpdateMeasurements(msg *MeasurementMessage, logMsg *string
 
 	file, err := os.OpenFile(r.FullPath+"/"+superFolder+"/"+fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 
+	log.Println("[INFO]: Created Folders and Measurement Files")
+
 	if err != nil {
 		*logMsg = "Unable to access file. Error: " + err.Error()
 		log.Fatal(*logMsg)
@@ -55,15 +57,7 @@ func (r *CSVReceiver) UpdateMeasurements(msg *MeasurementMessage, logMsg *string
 	}
 
 	writer := csv.NewWriter(file)
-	// Add column Names
-	rec := [...]string{
-		"SourceType", "MetricName", "Measurements", "CustomTags", "Metric Definitions",
-	}
-
-	if err := writer.Write(rec[:]); err != nil {
-		log.Fatal("[ERROR]: Unable to write to CSV file " + fileName + "Error: " + err.Error())
-		return err
-	}
+	log.Println("[INFO]: Adding new measurements for ", msg.DBName)
 
 	for _, data := range msg.Data {
 		record := [...]string{

@@ -4,69 +4,71 @@ import (
 	"errors"
 	"log"
 	"os"
+
 	// "time"
 
 	"github.com/parquet-go/parquet-go"
 )
 
-type ParqReceiver struct{}
-
-type ParquetSchema struct{
-    DBName string
-    SourceType string
-    MetricName string
-    Data string // json string
-    Tags string
-    MetricDefinitions string // json string
-    SysIdentifier string
+type ParqReceiver struct {
+	FullPath string
 }
 
-func (r *ParqReceiver) UpdateMeasurements(msg *MeasurementMessage, logMsg *string, fullPath string, primary_receiver *Receiver) error {
+type ParquetSchema struct {
+	DBName            string
+	SourceType        string
+	MetricName        string
+	Data              string // json string
+	Tags              string
+	MetricDefinitions string // json string
+	SysIdentifier     string
+}
 
-    // filename := msg.DBName + "_" + msg.MetricName + "_" + time.Now().GoString() + ".parquet"
-    filename := msg.DBName + ".parquet"
+func (r *ParqReceiver) UpdateMeasurements(msg *MeasurementMessage, logMsg *string) error {
 
-    // Create temporary storage and buffer storage
-    buffer_path := fullPath+"/buffer_storage"
-    os.MkdirAll(buffer_path, os.ModePerm)
+	filename := msg.DBName + ".parquet"
 
-    if _, err := os.Stat(buffer_path + "/" + filename); errors.Is(err, os.ErrNotExist) {
-        os.Create(buffer_path + "/" + filename)
-        log.Println("[INFO]: Created File")
-    }
+	// Create temporary storage and buffer storage
+	buffer_path := r.FullPath + "/buffer_storage"
+	os.MkdirAll(buffer_path, os.ModePerm)
 
-    _, err := os.Open(buffer_path + "/" + filename)
-    if err != nil{
-        log.Println("[ERROR]: Unable to open file", err)
-    }
+	if _, err := os.Stat(buffer_path + "/" + filename); errors.Is(err, os.ErrNotExist) {
+		os.Create(buffer_path + "/" + filename)
+		log.Println("[INFO]: Created File")
+	}
 
-    data_points, err := parquet.ReadFile[ParquetSchema](buffer_path + "/" + filename) 
-    if err != nil{
-        data_points = []ParquetSchema{} 
-    }
+	_, err := os.Open(buffer_path + "/" + filename)
+	if err != nil {
+		log.Println("[ERROR]: Unable to open file", err)
+	}
 
-    for _, metric_data := range msg.Data{
-        // populate data
-        data := new(ParquetSchema)
-        data.DBName = msg.DBName
-        data.SourceType = msg.SourceType
-        data.MetricName = msg.MetricName
-        data.Data = GetJson(metric_data)
-        data.MetricDefinitions = GetJson(msg.MetricDef)
-        data.Tags = GetJson(msg.CustomTags)
-        data.SysIdentifier = msg.SystemIdentifier
+	data_points, err := parquet.ReadFile[ParquetSchema](buffer_path + "/" + filename)
+	if err != nil {
+		data_points = []ParquetSchema{}
+	}
 
-        // Append to data points
-        data_points = append(data_points, *data)
-    }
+	for _, metric_data := range msg.Data {
+		// populate data
+		data := new(ParquetSchema)
+		data.DBName = msg.DBName
+		data.SourceType = msg.SourceType
+		data.MetricName = msg.MetricName
+		data.Data = GetJson(metric_data)
+		data.MetricDefinitions = GetJson(msg.MetricDef)
+		data.Tags = GetJson(msg.CustomTags)
+		data.SysIdentifier = msg.SystemIdentifier
 
-    err = parquet.WriteFile(buffer_path + "/" + filename, data_points)
+		// Append to data points
+		data_points = append(data_points, *data)
+	}
 
-    if err != nil{
-        log.Fatal("[ERROR]: Unable to write to file.\nStacktrace -> ", err)
-    }
+	err = parquet.WriteFile(buffer_path+"/"+filename, data_points)
 
-    log.Println("[INFO]: Closing file")
+	if err != nil {
+		log.Fatal("[ERROR]: Unable to write to file.\nStacktrace -> ", err)
+	}
 
-    return nil
+	log.Println("[INFO]: Closing file")
+
+	return nil
 }

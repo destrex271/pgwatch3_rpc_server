@@ -16,7 +16,7 @@ func StorageError() {
 func main() {
 
 	// Important Flags
-	receiverType := flag.String("type", "", "The type of sink that you want to keep this node as.\nAvailable options:\n\t- csv\n\t- text")
+	receiverType := flag.String("type", "", "The type of sink that you want to keep this node as.\nAvailable options:\n\t- csv\n\t- text\n\t- parquet")
 	port := flag.String("port", "-1", "Specify the port where you want you sink to receive the measaurements on.")
 	StorageFolder := flag.String("rootFolder", ".", "Only for formats like CSV...\n")
 	flag.Parse()
@@ -28,17 +28,19 @@ func main() {
 
 	var server Receiver
 	if *receiverType == "csv" {
+		log.Println("[INFO]: CSV Receiver Intialized")
 		server = &CSVReceiver{FullPath: *StorageFolder}
+	} else if *receiverType == "text" {
+		server = &TextReceiver{FullPath: *StorageFolder}
+	} else if *receiverType == "parquet" {
+		server = &ParqReceiver{FullPath: *StorageFolder}
 	}
 
-	log.Println("{:?}", receiverType)
-
 	rpc.RegisterName("Receiver", server)
+	log.Println("[INFO]: Registered Receiver")
 	rpc.HandleHTTP()
 
 	listener, err := net.Listen("tcp", "0.0.0.0:"+*port)
-
-	log.Println("Found -> ", listener)
 
 	if err != nil {
 		log.Fatal(err)

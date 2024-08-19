@@ -1,7 +1,5 @@
 package sinks
 
-import "log"
-
 type SQLs map[int]string
 
 type Metric struct {
@@ -50,12 +48,4 @@ type SyncReq struct {
 
 type Receiver interface {
 	UpdateMeasurements(msg *MeasurementMessage, logMsg *string) error
-}
-
-type TestReceiver struct {
-}
-
-func (t *TestReceiver) UpdateMeasurements(msg *MeasurementMessage, logMsg *string) error {
-	log.Println("Received Metrics!")
-	return nil
 }
