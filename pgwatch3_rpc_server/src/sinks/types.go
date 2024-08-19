@@ -40,12 +40,6 @@ type SyncReq struct {
 	MetricName string
 }
 
-// type Receiver struct {
-// 	SinkType      int
-// 	StorageFolder string       // Only for CSV
-// 	SyncChannel   chan SyncReq // Channel to receive sync signals
-// }
-
 type Receiver interface {
 	UpdateMeasurements(msg *MeasurementMessage, logMsg *string) error
 }
