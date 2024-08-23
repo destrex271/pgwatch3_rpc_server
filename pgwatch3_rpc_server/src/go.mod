@@ -4,6 +4,7 @@ go 1.22.1
 
 require (
 	github.com/andybalholm/brotli v1.1.0 // indirect
+	github.com/cybertec-postgresql/pgwatch3 v0.0.0-20240815162240-11ec15c1b445 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect

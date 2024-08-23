@@ -6,19 +6,20 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
-    . "pgwatch3_rpc_receiver/sinks"
+	. "pgwatch3_rpc_receiver/examples"
+	. "pgwatch3_rpc_receiver/sinks"
 )
 
-func StorageError(){
-    log.Default().Fatal("[ERROR]: No storage location was specified to store metric files")
+func StorageError() {
+	log.Default().Fatal("[ERROR]: No storage location was specified to store metric files")
 }
 
 func main() {
 
 	// Important Flags
-	receiverType := flag.String("type", "", "The type of sink that you want to keep this node as.\nAvailable options:\n\t- csv\n\t- text")
+	receiverType := flag.String("type", "", "The type of sink that you want to keep this node as.\nAvailable options:\n\t- csv\n\t- text\n\t- parquet")
 	port := flag.String("port", "-1", "Specify the port where you want you sink to receive the measaurements on.")
-	storage_folder := flag.String("rootFolder", ".", "Only for formats like CSV...\n")
+	StorageFolder := flag.String("rootFolder", ".", "Only for formats like CSV...\n")
 	flag.Parse()
 
 	if *port == "-1" {
@@ -26,40 +27,25 @@ func main() {
 		return
 	}
 
-	log.Println("Setting up Server.....")
-	server := new(Receiver)
+	var server Receiver
+	syncHandler := new(SyncMetricHandler)
 
-	server.SyncChannel = make(chan SyncReq, 10)
 	if *receiverType == "csv" {
-		server.SinkType = CSV
-        if len(*storage_folder) == 0{
-            StorageError()
-        }
-		server.StorageFolder = *storage_folder
+		log.Println("[INFO]: CSV Receiver Intialized")
+		server = &CSVReceiver{FullPath: *StorageFolder}
 	} else if *receiverType == "text" {
-		// Only for testing
-		server.SinkType = TEXT
-	} else if *receiverType == "parquet"{
-        server.SinkType = PARQUET
-        if len(*storage_folder) == 0{
-            StorageError()
-        }
-        server.StorageFolder = *storage_folder
-    } else {
-		// Throw Error
-		server.SinkType = NONE
-		log.Fatal("[ERROR]: No Sink Type was provided. Please use the --type option")
-		return
+		server = &TextReceiver{FullPath: *StorageFolder}
+	} else if *receiverType == "parquet" {
+		server = &ParqReceiver{FullPath: *StorageFolder}
 	}
 
-	rpc.Register(server)
-	log.Println("RPC registered")
+	rpc.RegisterName("Receiver", server)     // Primary Receiver
+	rpc.RegisterName("Handler", syncHandler) // Sync Metric Handler
+	log.Println("[INFO]: Registered Receiver")
 	rpc.HandleHTTP()
 
-	log.Println("listening...")
 	listener, err := net.Listen("tcp", "0.0.0.0:"+*port)
 
-	log.Println("Found -> ", listener)
 	if err != nil {
 		log.Fatal(err)
 	}
