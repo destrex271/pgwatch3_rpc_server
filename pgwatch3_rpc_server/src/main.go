@@ -28,6 +28,8 @@ func main() {
 	}
 
 	var server Receiver
+	syncHandler := new(SyncMetricHandler)
+
 	if *receiverType == "csv" {
 		log.Println("[INFO]: CSV Receiver Intialized")
 		server = &CSVReceiver{FullPath: *StorageFolder}
@@ -37,7 +39,8 @@ func main() {
 		server = &ParqReceiver{FullPath: *StorageFolder}
 	}
 
-	rpc.RegisterName("Receiver", server)
+	rpc.RegisterName("Receiver", server)     // Primary Receiver
+	rpc.RegisterName("Handler", syncHandler) // Sync Metric Handler
 	log.Println("[INFO]: Registered Receiver")
 	rpc.HandleHTTP()
 
