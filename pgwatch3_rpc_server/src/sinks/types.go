@@ -1,7 +1,5 @@
 package sinks
 
-import "errors"
-
 type SQLs map[int]string
 
 type Metric struct {
@@ -47,28 +45,4 @@ type Receiver interface {
 
 type SyncMetricHandler struct {
 	SyncChannel chan SyncReq
-}
-
-func (handler *SyncMetricHandler) SyncMetricHandler(syncReq *SyncReq, logMsg *string) error {
-	if len(syncReq.OPR) == 0 {
-		return errors.New("Empty Operation.")
-	}
-	if len(syncReq.DBName) == 0 {
-		return errors.New("Empty Database.")
-	}
-	if len(syncReq.MetricName) == 0 {
-		return errors.New("Empty Metric Provided.")
-	}
-
-	go handler.PopulateChannel(syncReq)
-	return nil
-}
-
-func (handler *SyncMetricHandler) PopulateChannel(syncReq *SyncReq) {
-	handler.SyncChannel <- *syncReq
-}
-
-func (handler *SyncMetricHandler) GetSyncChannelContent() SyncReq {
-	content := <-handler.SyncChannel
-	return content
 }
