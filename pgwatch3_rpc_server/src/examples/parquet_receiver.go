@@ -4,9 +4,6 @@ import (
 	"errors"
 	"log"
 	"os"
-
-	// "time"
-
 	. "pgwatch3_rpc_receiver/sinks"
 
 	"github.com/parquet-go/parquet-go"

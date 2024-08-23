@@ -24,11 +24,6 @@ var isSyncSignalHandleActive = false
 
 func HandleSyncSignals(recv *Receiver) {
 	isSyncSignalHandleActive = true
-	// val := recv.GetSyncChannelContent()
-	// if val.OPR == "DELETE" {
-	// 	fmt.Print("DELETE METRIC: ", val.MetricName)
-	// }
-	// isSyncSignalHandleActive = false
 }
 
 func (r *CSVReceiver) UpdateMeasurements(msg *MeasurementMessage, logMsg *string) error {
@@ -40,9 +35,6 @@ func (r *CSVReceiver) UpdateMeasurements(msg *MeasurementMessage, logMsg *string
 	// Open/Create Output file
 	superFolder := msg.DBName + "-" + fmt.Sprint(msg.CustomTags["pgwatchId"])
 	fileName := msg.MetricName + ".csv"
-	// if !isSyncSignalHandleActive {
-	// 	go HandleSyncSignals(primary_receiver)
-	// }
 
 	// Create Database folder if does not exist
 	err := os.MkdirAll(r.FullPath+"/"+superFolder, os.ModePerm)
