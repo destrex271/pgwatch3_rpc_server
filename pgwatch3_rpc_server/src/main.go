@@ -23,7 +23,7 @@ func main() {
 	flag.Parse()
 
 	if *port == "-1" {
-		log.Fatal("[ERROR]: No Port Specified")
+		log.Println("[ERROR]: No Port Specified")
 		return
 	}
 
@@ -47,7 +47,7 @@ func main() {
 	listener, err := net.Listen("tcp", "0.0.0.0:"+*port)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 
 	http.Serve(listener, nil)

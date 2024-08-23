@@ -20,7 +20,7 @@ func (r *TextReceiver) UpdateMeasurements(msg *MeasurementMessage, logMsg *strin
 
 	if err != nil {
 		*logMsg = "Unable to open file. Error: " + err.Error()
-		log.Fatal(*logMsg)
+		log.Println(*logMsg)
 		return err
 	}
 
