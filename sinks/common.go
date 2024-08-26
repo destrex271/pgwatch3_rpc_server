@@ -6,6 +6,10 @@ import (
 	"log"
 )
 
+func StorageError() {
+	log.Default().Fatal("[ERROR]: No storage location was specified to store metric files")
+}
+
 func GetJson[K map[string]string | map[string]any | float64 | Measurement | Metric](value K) string {
 	jsonString, err := json.Marshal(value)
 	if err != nil {

@@ -1,4 +1,4 @@
-package examples
+package csv_receiver
 
 import (
 	"encoding/csv"
@@ -19,12 +19,6 @@ type CSVReceiver struct {
 *       - Metric1.csv
 *       - Metric2.csv
  */
-
-var isSyncSignalHandleActive = false
-
-func HandleSyncSignals(recv *Receiver) {
-	isSyncSignalHandleActive = true
-}
 
 func (r *CSVReceiver) UpdateMeasurements(msg *MeasurementMessage, logMsg *string) error {
 

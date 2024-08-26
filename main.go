@@ -6,13 +6,11 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
-	. "pgwatch3_rpc_receiver/examples"
+	. "pgwatch3_rpc_receiver/cmd/csv_receiver"
+	. "pgwatch3_rpc_receiver/cmd/parquet_receiver"
+	. "pgwatch3_rpc_receiver/cmd/text_receiver"
 	. "pgwatch3_rpc_receiver/sinks"
 )
-
-func StorageError() {
-	log.Default().Fatal("[ERROR]: No storage location was specified to store metric files")
-}
 
 func main() {
 

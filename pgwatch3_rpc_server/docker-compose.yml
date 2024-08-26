@@ -1,5 +1,0 @@
-services:
-  rpc_sink:
-    build: .
-    ports:
-      - "5050:5050"

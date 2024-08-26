@@ -1,4 +1,4 @@
-package examples
+package parquet_receiver
 
 import (
 	"errors"

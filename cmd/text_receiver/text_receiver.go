@@ -1,4 +1,4 @@
-package examples
+package text_receiver
 
 import (
 	"bufio"
