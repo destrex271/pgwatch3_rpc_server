@@ -7,6 +7,8 @@ import (
 	"log"
 	"os"
 	. "pgwatch3_rpc_receiver/sinks"
+
+	"github.com/cybertec-postgresql/pgwatch/v3/api"
 )
 
 type CSVReceiver struct {
@@ -26,7 +28,7 @@ func HandleSyncSignals(recv *Receiver) {
 	isSyncSignalHandleActive = true
 }
 
-func (r *CSVReceiver) UpdateMeasurements(msg *MeasurementMessage, logMsg *string) error {
+func (r *CSVReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
 
 	if len(msg.DBName) == 0 {
 		return errors.New("Empty Database")
@@ -38,6 +40,9 @@ func (r *CSVReceiver) UpdateMeasurements(msg *MeasurementMessage, logMsg *string
 
 	// Create Database folder if does not exist
 	err := os.MkdirAll(r.FullPath+"/"+superFolder, os.ModePerm)
+	if err != nil {
+		return err
+	}
 
 	file, err := os.OpenFile(r.FullPath+"/"+superFolder+"/"+fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 

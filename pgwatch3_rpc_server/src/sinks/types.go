@@ -1,30 +1,8 @@
 package sinks
 
-type SQLs map[int]string
-
-type Metric struct {
-	SQLs            SQLs
-	InitSQL         string   `yaml:"init_sql,omitempty"`
-	NodeStatus      string   `yaml:"node_status,omitempty"`
-	Gauges          []string `yaml:",omitempty"`
-	IsInstanceLevel bool     `yaml:"is_instance_level,omitempty"`
-	StorageName     string   `yaml:"storage_name,omitempty"`
-	Description     string   `yaml:"description,omitempty"`
-}
-
-type Measurement map[string]any
-type Measurements []map[string]any
-
-type MeasurementMessage struct {
-	DBName           string
-	SourceType       string
-	MetricName       string
-	CustomTags       map[string]string
-	Data             Measurements
-	MetricDef        Metric
-	RealDbname       string
-	SystemIdentifier string
-}
+import (
+	"github.com/cybertec-postgresql/pgwatch/v3/api"
+)
 
 const (
 	CSV     = 1
@@ -40,7 +18,7 @@ type SyncReq struct {
 }
 
 type Receiver interface {
-	UpdateMeasurements(msg *MeasurementMessage, logMsg *string) error
+	UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error
 }
 
 type SyncMetricHandler struct {
