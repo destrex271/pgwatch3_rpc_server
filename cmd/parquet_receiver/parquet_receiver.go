@@ -6,6 +6,7 @@ import (
 	"os"
 	. "pgwatch3_rpc_receiver/sinks"
 
+	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/parquet-go/parquet-go"
 )
 
@@ -23,7 +24,7 @@ type ParquetSchema struct {
 	SysIdentifier     string
 }
 
-func (r *ParqReceiver) UpdateMeasurements(msg *MeasurementMessage, logMsg *string) error {
+func (r *ParqReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
 
 	if len(msg.DBName) == 0 {
 		*logMsg = "False Record delieverd"

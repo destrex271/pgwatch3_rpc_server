@@ -6,13 +6,15 @@ import (
 	"log"
 	"os"
 	. "pgwatch3_rpc_receiver/sinks"
+
+	"github.com/cybertec-postgresql/pgwatch/v3/api"
 )
 
 type TextReceiver struct {
 	FullPath string
 }
 
-func (r *TextReceiver) UpdateMeasurements(msg *MeasurementMessage, logMsg *string) error {
+func (r *TextReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
 
 	// Write Metrics in a text file
 	fileName := fmt.Sprint(msg.CustomTags["pgwatchId"]) + ".txt"
