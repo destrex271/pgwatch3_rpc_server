@@ -1,4 +1,4 @@
-module pgwatch3_rpc_receiver
+module github.com/destrex271/pgwatch3_rpc_server
 
 go 1.22.1
 

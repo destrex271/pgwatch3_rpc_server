@@ -4,7 +4,8 @@ import (
 	"errors"
 	"log"
 	"os"
-	. "pgwatch3_rpc_receiver/sinks"
+
+	"github.com/destrex271/pgwatch3_rpc_server/sinks"
 
 	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/parquet-go/parquet-go"
@@ -59,9 +60,9 @@ func (r *ParqReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *
 		data.DBName = msg.DBName
 		data.SourceType = msg.SourceType
 		data.MetricName = msg.MetricName
-		data.Data = GetJson(metric_data)
-		data.MetricDefinitions = GetJson(msg.MetricDef)
-		data.Tags = GetJson(msg.CustomTags)
+		data.Data = sinks.GetJson(metric_data)
+		data.MetricDefinitions = sinks.GetJson(msg.MetricDef)
+		data.Tags = sinks.GetJson(msg.CustomTags)
 		data.SysIdentifier = msg.SystemIdentifier
 
 		// Append to data points

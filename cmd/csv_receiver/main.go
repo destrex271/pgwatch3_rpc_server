@@ -6,7 +6,8 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
-	. "pgwatch3_rpc_receiver/sinks"
+
+	"github.com/destrex271/pgwatch3_rpc_server/sinks"
 )
 
 func main() {
@@ -21,8 +22,8 @@ func main() {
 		return
 	}
 
-	var server Receiver
-	syncHandler := new(SyncMetricHandler)
+	var server sinks.Receiver
+	syncHandler := new(sinks.SyncMetricHandler)
 
 	log.Println("[INFO]: CSV Receiver Intialized")
 	server = &CSVReceiver{FullPath: *StorageFolder}

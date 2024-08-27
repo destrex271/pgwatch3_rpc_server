@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-	. "pgwatch3_rpc_receiver/sinks"
+
+	"github.com/destrex271/pgwatch3_rpc_server/sinks"
 
 	"github.com/cybertec-postgresql/pgwatch/v3/api"
 )
@@ -32,7 +33,7 @@ func (r *TextReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *
 	output := "DBName: " + msg.DBName + "\n" + "Metric: " + msg.MetricName + "\n"
 
 	for _, data := range msg.Data {
-		output += GetJson(data) + "\n"
+		output += sinks.GetJson(data) + "\n"
 	}
 
 	output += "\n===================================\n"
