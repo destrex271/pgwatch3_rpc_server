@@ -1,6 +1,6 @@
 # Pgwatch3 RPC Receivers
 
-## Running the dummy receiver and client
+## Running custom Sinks
 
 Open the project in two terminals.
 
@@ -8,25 +8,18 @@ In the first terminal start the server i.e. in the folder pgwatch3_rpc_server/sr
 Currently we are using a demo text receiver by default which will store the measurements in a text file.
 Later on we'll add command line arguments to specify the sink type.
 
-To start the receiver:
+To start the any of the given receivers you can use:
 
 ```bash
-# For Text sinks
-pgwatch3_rpc_server/src git:(main)$ go run . --type=text --port:5050
-# For CSV sinks
-pgwatch3_rpc_server/src git:(main)$ go run . --type=csv --port:5050
+# CSV Receiver
+cd cmd/csv_receiver
+go run . --rootFolder=<location_on_disk>
+
+# Parquet Receiver
+cd cmd/parquet_receiver
+go run . --rootFolder=<location_on_disk>
 ```
 
+## Developing custom sinks
 
-In the second terminal switch to the directory `dummy_client/src` and run:
-
-```bash
-# Sends Measurements 40 times continously to the receiver
-for i in {1..40}; do go run .; done;
-```
-
-
-## Tasks
-
- - <del>Implementing a dummy receiver and client to send the MeasurementMessage Struct</del>
- - <del>Testing if the net/rpc package is suitable for our usecase</del>
+To develop your own sinks you can utilize the template that we have used for each of the example receivers. You can copy the main.go file as it is and use the Receiver interface to write your own the UpdateMeasurements functions.

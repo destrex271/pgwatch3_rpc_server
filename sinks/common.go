@@ -16,11 +16,11 @@ func GetJson[K map[string]string | map[string]any | float64 | api.MeasurementEnv
 	return string(jsonString)
 }
 
-func (handler *SyncMetricHandler) SyncMetricHandler(syncReq *SyncReq, logMsg *string) error {
-	if len(syncReq.OPR) == 0 {
+func (handler *SyncMetricHandler) SyncMetricHandler(syncReq *api.RPCSyncRequest, logMsg *string) error {
+	if len(syncReq.Operation) == 0 {
 		return errors.New("Empty Operation.")
 	}
-	if len(syncReq.DBName) == 0 {
+	if len(syncReq.DbName) == 0 {
 		return errors.New("Empty Database.")
 	}
 	if len(syncReq.MetricName) == 0 {
@@ -31,11 +31,11 @@ func (handler *SyncMetricHandler) SyncMetricHandler(syncReq *SyncReq, logMsg *st
 	return nil
 }
 
-func (handler *SyncMetricHandler) PopulateChannel(syncReq *SyncReq) {
+func (handler *SyncMetricHandler) PopulateChannel(syncReq *api.RPCSyncRequest) {
 	handler.SyncChannel <- *syncReq
 }
 
-func (handler *SyncMetricHandler) GetSyncChannelContent() SyncReq {
+func (handler *SyncMetricHandler) GetSyncChannelContent() api.RPCSyncRequest {
 	content := <-handler.SyncChannel
 	return content
 }

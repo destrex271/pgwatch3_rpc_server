@@ -1,4 +1,4 @@
-package examples
+package csv_receiver
 
 import (
 	"encoding/csv"
@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"log"
 	"os"
-	. "pgwatch3_rpc_receiver/sinks"
 
 	"github.com/cybertec-postgresql/pgwatch/v3/api"
+	"github.com/destrex271/pgwatch3_rpc_server/sinks"
 )
 
 type CSVReceiver struct {
@@ -22,14 +22,7 @@ type CSVReceiver struct {
 *       - Metric2.csv
  */
 
-var isSyncSignalHandleActive = false
-
-func HandleSyncSignals(recv *Receiver) {
-	isSyncSignalHandleActive = true
-}
-
 func (r *CSVReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
-
 	if len(msg.DBName) == 0 {
 		return errors.New("Empty Database")
 	}
@@ -61,9 +54,9 @@ func (r *CSVReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *s
 		record := [...]string{
 			msg.SourceType,
 			msg.MetricName,
-			GetJson(data),
-			GetJson(msg.CustomTags),
-			GetJson(msg.MetricDef),
+			sinks.GetJson(data),
+			sinks.GetJson(msg.CustomTags),
+			sinks.GetJson(msg.MetricDef),
 		}
 
 		// Writing measurements to CSV
