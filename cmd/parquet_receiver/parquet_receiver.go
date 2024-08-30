@@ -29,7 +29,7 @@ func (r *ParqReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *
 
 	if len(msg.DBName) == 0 {
 		*logMsg = "False Record delieverd"
-		return errors.New("Empty Database!")
+		return errors.New("Empty Record!")
 	}
 
 	filename := msg.DBName + ".parquet"
