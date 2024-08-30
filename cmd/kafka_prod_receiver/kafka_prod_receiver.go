@@ -32,6 +32,7 @@ func NewKafkaProducer(host string, port string, topic string, partition int) (*K
 }
 
 func (r *KafkaProdReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
+    // Kafka Recv
 	if len(msg.DBName) == 0 {
 		*logMsg = "Empty Record Delievered"
 		return errors.New("Empty Record")
