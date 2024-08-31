@@ -1,4 +1,4 @@
-package parquet_receiver
+package main
 
 import (
 	"errors"
@@ -13,6 +13,7 @@ import (
 
 type ParqReceiver struct {
 	FullPath string
+	sinks.SyncMetricHandler
 }
 
 type ParquetSchema struct {
@@ -25,7 +26,7 @@ type ParquetSchema struct {
 	SysIdentifier     string
 }
 
-func (r *ParqReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
+func (r ParqReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
 
 	if len(msg.DBName) == 0 {
 		*logMsg = "False Record delieverd"

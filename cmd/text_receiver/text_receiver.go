@@ -1,4 +1,4 @@
-package text_receiver
+package main
 
 import (
 	"bufio"
@@ -13,9 +13,10 @@ import (
 
 type TextReceiver struct {
 	FullPath string
+	sinks.SyncMetricHandler
 }
 
-func (r *TextReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
+func (r TextReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
 
 	// Write Metrics in a text file
 	fileName := fmt.Sprint(msg.CustomTags["pgwatchId"]) + ".txt"
