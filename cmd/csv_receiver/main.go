@@ -1,4 +1,4 @@
-package csv_receiver
+package main
 
 import (
 	"flag"
@@ -23,13 +23,11 @@ func main() {
 	}
 
 	var server sinks.Receiver
-	syncHandler := new(sinks.SyncMetricHandler)
 
+	server = CSVReceiver{FullPath: *StorageFolder, SyncMetricHandler: sinks.NewSyncMetricHandler(1024)}
 	log.Println("[INFO]: CSV Receiver Intialized")
-	server = &CSVReceiver{FullPath: *StorageFolder}
 
-	rpc.RegisterName("Receiver", server)     // Primary Receiver
-	rpc.RegisterName("Handler", syncHandler) // Sync Metric Handler
+	rpc.RegisterName("Receiver", server) // Primary Receiver
 	log.Println("[INFO]: Registered Receiver")
 	rpc.HandleHTTP()
 

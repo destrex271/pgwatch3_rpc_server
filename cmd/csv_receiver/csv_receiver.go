@@ -1,4 +1,4 @@
-package csv_receiver
+package main
 
 import (
 	"encoding/csv"
@@ -13,6 +13,7 @@ import (
 
 type CSVReceiver struct {
 	FullPath string
+	sinks.SyncMetricHandler
 }
 
 /*
@@ -22,7 +23,7 @@ type CSVReceiver struct {
 *       - Metric2.csv
  */
 
-func (r *CSVReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
+func (r CSVReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
 	if len(msg.DBName) == 0 {
 		return errors.New("Empty Database")
 	}
