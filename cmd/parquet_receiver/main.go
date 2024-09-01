@@ -1,4 +1,4 @@
-package parquet_receiver
+package main
 
 import (
 	"flag"
@@ -24,12 +24,9 @@ func main() {
 	}
 
 	var server sinks.Receiver
-	syncHandler := new(sinks.SyncMetricHandler)
+	server = &ParqReceiver{FullPath: *StorageFolder, SyncMetricHandler: sinks.NewSyncMetricHandler(1024)}
 
-	server = &ParqReceiver{FullPath: *StorageFolder}
-
-	rpc.RegisterName("Receiver", server)     // Primary Receiver
-	rpc.RegisterName("Handler", syncHandler) // Sync Metric Handler
+	rpc.RegisterName("Receiver", server) // Primary Receiver
 	log.Println("[INFO]: Registered Receiver")
 	rpc.HandleHTTP()
 

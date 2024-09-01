@@ -1,4 +1,4 @@
-package kafka_prod_receiver
+package main
 
 import (
 	"flag"
@@ -24,15 +24,12 @@ func main() {
 	}
 
 	var server sinks.Receiver
-	syncHandler := new(sinks.SyncMetricHandler)
-
-	server, err := NewKafkaProducer()
+	server, err := NewKafkaProducer("localhost", *port, "pgwatch3", 0)
 	if err != nil {
 		log.Println("[ERROR]: Unable to create Kafka Producer ", err)
 	}
 
-	rpc.RegisterName("Receiver", server)     // Primary Receiver
-	rpc.RegisterName("Handler", syncHandler) // Sync Metric Handler
+	rpc.RegisterName("Receiver", server) // Primary Receiver
 	log.Println("[INFO]: Registered Receiver")
 	rpc.HandleHTTP()
 
