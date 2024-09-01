@@ -15,6 +15,7 @@ func main() {
 	// Important Flags
 	// receiverType := flag.String("type", "", "The type of sink that you want to keep this node as.\nAvailable options:\n\t- csv\n\t- text\n\t- parquet")
 	port := flag.String("port", "-1", "Specify the port where you want you sink to receive the measaurements on.")
+	kafkaHost := flag.String("kafkaHost", "localhost:9092", "Specify the host and port of the kafka instance")
 	// StorageFolder := flag.String("rootFolder", ".", "Only for formats like CSV...\n")
 	flag.Parse()
 
@@ -24,7 +25,7 @@ func main() {
 	}
 
 	var server sinks.Receiver
-	server, err := NewKafkaProducer("localhost", *port, "pgwatch3", 0)
+	server, err := NewKafkaProducer(*kafkaHost, "pgwatch3", 0)
 	if err != nil {
 		log.Println("[ERROR]: Unable to create Kafka Producer ", err)
 	}
