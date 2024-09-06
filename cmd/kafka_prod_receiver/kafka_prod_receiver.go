@@ -13,29 +13,70 @@ import (
 )
 
 type KafkaProdReceiver struct {
-	conn      *kafka.Conn
-	topic     string
-	partition int
-	uri       string
+	conn_regisrty map[string]*kafka.Conn
+	uri           string
+	auto_add      bool
 	sinks.SyncMetricHandler
 }
 
-func NewKafkaProducer(host string, topic string, partition int) (kpr KafkaProdReceiver, err error) {
-	var conn *kafka.Conn
-	conn, err = kafka.DialLeader(context.Background(), "tcp", host, topic, partition)
-	if err != nil {
-		return
+func (r *KafkaProdReceiver) HandleSyncMetric() {
+	req := <-r.SyncChannel
+	if req.Operation == "DELETE" {
+		r.CloseConnectionForDB(req.DbName)
+	} else if req.Operation == "ADD" {
+		r.AddTopicIfNotExists(req.DbName)
 	}
+}
 
-	kpr = KafkaProdReceiver{
-		conn:              conn,
-		topic:             topic,
-		partition:         partition,
+func NewKafkaProducer(host string, topics []string, partitions []int, auto_add bool) (kpr *KafkaProdReceiver, err error) {
+	connRegistry := make(map[string]*kafka.Conn)
+	partitions_len := len(partitions)
+	for index, topic := range topics {
+		var conn *kafka.Conn
+		if partitions_len > 0 {
+			conn, err = kafka.DialLeader(context.Background(), "tcp", host, topic, partitions[index])
+		} else {
+			conn, err = kafka.DialLeader(context.Background(), "tcp", host, topic, 0)
+		}
+		if err != nil {
+			return
+		}
+
+		connRegistry[topic] = conn
+	}
+	kpr = &KafkaProdReceiver{
+		conn_regisrty:     connRegistry,
 		uri:               host,
 		SyncMetricHandler: sinks.NewSyncMetricHandler(1024),
+		auto_add:          auto_add,
 	}
+	// Start sync Handler routine
+	go kpr.HandleSyncMetric()
 
 	return kpr, nil
+}
+
+func (r *KafkaProdReceiver) AddTopicIfNotExists(dbName string) error {
+	new_conn, err := kafka.DialLeader(context.Background(), "tcp", r.uri, dbName, 0)
+	if err != nil {
+		return err
+	}
+
+	r.conn_regisrty[dbName] = new_conn
+	log.Println("[INFO]: Added Database " + dbName + " to sink")
+	return nil
+}
+
+func (r *KafkaProdReceiver) CloseConnectionForDB(dbName string) error {
+	err := r.conn_regisrty[dbName].Close()
+
+	if err != nil {
+		return err
+	}
+
+	delete(r.conn_regisrty, dbName)
+	log.Println("[INFO]: Deleted Database " + dbName + " from sink")
+	return nil
 }
 
 func (r KafkaProdReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
@@ -45,6 +86,22 @@ func (r KafkaProdReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logM
 		return errors.New("Empty Record")
 	}
 
+	// Get connection for database topic
+	log.Println("[INFO]: Getting connection")
+	conn := r.conn_regisrty[msg.DBName]
+	log.Println("[INFO]: Got connection")
+
+	if conn == nil {
+		log.Println("[WARNING]: Connection does not exist for database " + msg.DBName)
+		if r.auto_add {
+			log.Println("[INFO]: Adding database " + msg.DBName + " since Auto Add is enabled. You can disable it by restarting the sink with autoadd option as false")
+			r.AddTopicIfNotExists(msg.DBName)
+			conn = r.conn_regisrty[msg.DBName]
+		} else {
+			return errors.New("[FATAL] Auto Add not enabled. Please restart the sink with autoadd=true")
+		}
+	}
+
 	// Convert MeasurementEnvelope struct to json and write it as message in kafka
 	json_data, err := json.Marshal(msg)
 	if err != nil {
@@ -52,8 +109,8 @@ func (r KafkaProdReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logM
 		return err
 	}
 
-	r.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-	_, err = r.conn.WriteMessages(
+	conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+	_, err = conn.WriteMessages(
 		kafka.Message{Value: json_data},
 	)
 
@@ -62,7 +119,7 @@ func (r KafkaProdReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logM
 		return err
 	}
 
-	log.Println("[INFO]: Measurements Written to topic - ", r.topic)
+	log.Println("[INFO]: Measurements Written to topic - ", msg.DBName)
 
 	return nil
 }
