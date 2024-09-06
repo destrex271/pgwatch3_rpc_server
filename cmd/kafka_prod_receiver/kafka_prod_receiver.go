@@ -87,9 +87,7 @@ func (r KafkaProdReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logM
 	}
 
 	// Get connection for database topic
-	log.Println("[INFO]: Getting connection")
 	conn := r.conn_regisrty[msg.DBName]
-	log.Println("[INFO]: Got connection")
 
 	if conn == nil {
 		log.Println("[WARNING]: Connection does not exist for database " + msg.DBName)
