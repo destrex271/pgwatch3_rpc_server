@@ -13,9 +13,9 @@ import (
 func main() {
 
 	// Important Flags
-	// receiverType := flag.String("type", "", "The type of sink that you want to keep this node as.\nAvailable options:\n\t- csv\n\t- text\n\t- parquet")
 	port := flag.String("port", "-1", "Specify the port where you want you sink to receive the measaurements on.")
-	// StorageFolder := flag.String("rootFolder", ".", "Only for formats like CSV...\n")
+	kafkaHost := flag.String("kafkaHost", "localhost:9092", "Specify the host and port of the kafka instance")
+	autoadd := flag.Bool("autoadd", true, "Specifies if new databases are automatically added as a new kafka topic. Default is true. You can disable this service and send an 'ADD' sync metric signal before sending data")
 	flag.Parse()
 
 	if *port == "-1" {
@@ -24,7 +24,7 @@ func main() {
 	}
 
 	var server sinks.Receiver
-	server, err := NewKafkaProducer("localhost", *port, "pgwatch3", 0)
+	server, err := NewKafkaProducer(*kafkaHost, nil, nil, *autoadd)
 	if err != nil {
 		log.Println("[ERROR]: Unable to create Kafka Producer ", err)
 	}
