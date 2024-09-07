@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
-	"time"
 
 	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
@@ -80,11 +79,16 @@ func (r *KafkaProdReceiver) CloseConnectionForDB(dbName string) error {
 	return nil
 }
 
-func (r KafkaProdReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
+func (r *KafkaProdReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
 	// Kafka Recv
 	if len(msg.DBName) == 0 {
-		*logMsg = "Empty Record Delievered"
-		return errors.New("Empty Record")
+		*logMsg = "Empty Database"
+		return errors.New(*logMsg)
+	}
+
+	if len(msg.MetricName) == 0 {
+		*logMsg = "Empty Metric Name"
+		return errors.New(*logMsg)
 	}
 
 	// Get connection for database topic
@@ -94,7 +98,11 @@ func (r KafkaProdReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logM
 		log.Println("[WARNING]: Connection does not exist for database " + msg.DBName)
 		if r.auto_add {
 			log.Println("[INFO]: Adding database " + msg.DBName + " since Auto Add is enabled. You can disable it by restarting the sink with autoadd option as false")
-			r.AddTopicIfNotExists(msg.DBName)
+			err := r.AddTopicIfNotExists(msg.DBName)
+			if err != nil {
+				log.Println("[ERROR]: Unable to create new connection")
+				return err
+			}
 			conn = r.conn_regisrty[msg.DBName]
 		} else {
 			return errors.New("[FATAL] Auto Add not enabled. Please restart the sink with autoadd=true")
@@ -108,7 +116,7 @@ func (r KafkaProdReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logM
 		return err
 	}
 
-	conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+	// conn.SetWriteDeadline(time.Now())
 	_, err = conn.WriteMessages(
 		kafka.Message{Value: json_data},
 	)
