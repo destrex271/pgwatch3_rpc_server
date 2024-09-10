@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/csv"
 	"errors"
-	"fmt"
 	"log"
 	"os"
 
@@ -29,7 +28,10 @@ func (r CSVReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *st
 	}
 
 	// Open/Create Output file
-	superFolder := msg.DBName + "-" + fmt.Sprint(msg.CustomTags["pgwatchId"])
+	superFolder := msg.DBName
+	if len(msg.MetricName) == 0 {
+		return errors.New("Unidentifiable Metric Name: EMPTY")
+	}
 	fileName := msg.MetricName + ".csv"
 
 	// Create Database folder if does not exist
