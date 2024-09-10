@@ -5,13 +5,14 @@ go 1.22.1
 require (
 	github.com/cybertec-postgresql/pgwatch/v3 v3.0.0-20240827142607-af4696bca143
 	github.com/parquet-go/parquet-go v0.23.0
+	github.com/segmentio/kafka-go v0.4.47
+	github.com/stretchr/testify v1.9.0
 )
 
 require (
 	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/confluentinc/confluent-kafka-go v1.9.2 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
 	github.com/cybertec-postgresql/pgx-migrator v1.0.2 // indirect
@@ -37,10 +38,8 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/segmentio/encoding v0.4.0 // indirect
-	github.com/segmentio/kafka-go v0.4.47 // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	github.com/stretchr/testify v1.9.0 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.15 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.15 // indirect
 	go.etcd.io/etcd/client/v3 v3.5.15 // indirect
