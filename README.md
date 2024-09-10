@@ -1,4 +1,4 @@
-[![Tests](https://github.com/destrex271/pgwatch3_rpc_server/actions/workflows/go.yml/badge.svg)](https://github.com/destrex271/pgwatch3_rpc_server/actions/workflows/go.yml)
+[![Tests](https://github.com/destrex271/pgwatch3_rpc_server/actions/workflows/test.yml/badge.svg)](https://github.com/destrex271/pgwatch3_rpc_server/actions/workflows/test.yml)
 [![Coverage Status](https://coveralls.io/repos/github/destrex271/pgwatch3_rpc_server/badge.svg?branch=main)](https://coveralls.io/github/destrex271/pgwatch3_rpc_server?branch=main)
 
 # Pgwatch3 RPC Receivers
