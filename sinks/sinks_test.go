@@ -63,7 +63,7 @@ func TestSyncMetric_EmptyOperation(t *testing.T) {
 func TestSyncMetric_EmptyDatabase(t *testing.T) {
 	chan_len := 1024
 	// Get new handler
-	handler := NewSyncMetricHandler(chan_len)
+	handler := NewSyncMetricHandler(0)
 	assert.NotNil(t, handler, "Sync Metric Handler is nil")
 
 	// Check if channel is of expected length
