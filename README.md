@@ -1,3 +1,5 @@
+[![Tests](https://github.com/destrex271/pgwatch3_rpc_server/actions/workflows/go.yml/badge.svg)](https://github.com/destrex271/pgwatch3_rpc_server/actions/workflows/go.yml)
+
 # Pgwatch3 RPC Receivers
 
 ## Running custom Sinks
