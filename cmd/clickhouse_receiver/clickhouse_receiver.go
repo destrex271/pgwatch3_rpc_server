@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
@@ -24,24 +25,19 @@ func GetConnection(user string, password string, serverURI string) (*sql.DB, err
 	conn := clickhouse.OpenDB(&clickhouse.Options{
 		Addr:     []string{serverURI}, // 9440 is a secure native TCP port
 		Protocol: clickhouse.Native,
-		TLS:      &tls.Config{}, // enable secure TLS
 		Auth: clickhouse.Auth{
 			Username: user,
 			Password: password,
 		},
+		Debug: false,
+		TLS:   &tls.Config{InsecureSkipVerify: true},
 	})
 
-	if conn != nil {
-		return nil, errors.New("Unable to create new connection")
+	err := conn.Ping()
+	if err != nil {
+		return nil, errors.New("unable to create new connection")
 	}
 
-	// row := conn.QueryRow("SELECT 1")
-	// var col uint8
-	// if err := row.Scan(&col); err != nil {
-	// 	fmt.Printf("An error while reading the data: %s", err)
-	// } else {
-	// 	fmt.Printf("Result: %d", col)
-	// }
 	return conn, nil
 }
 
@@ -56,7 +52,13 @@ func NewClickHouseReceiver(user string, password string, serverURI string) (chr 
 	clickhouseRec := &ClickHouseReceiver{
 		Conn:              conn,
 		SyncMetricHandler: sinks.NewSyncMetricHandler(1024),
+		Engine:            "Memory",
 	}
+
+	// Setup tables
+	log.Println("[INFO]: Setting up Measurements table...")
+	clickhouseRec.SetupTables()
+	log.Println("[INFO]: Done!")
 	return clickhouseRec, nil
 }
 
@@ -64,7 +66,7 @@ func NewClickHouseReceiver(user string, password string, serverURI string) (chr 
 func (r *ClickHouseReceiver) SetupTables() error {
 
 	// Create Measurements Table
-	_, err := r.Conn.Exec(`
+	query := fmt.Sprintf(`
 		CREATE TABLE IF NOT EXISTS Measurements(
 			dbname String,
 			custom_tags Map(String, String),
@@ -75,7 +77,8 @@ func (r *ClickHouseReceiver) SetupTables() error {
 			data JSON,
 			timestamp DateTime DEFAULT now(),
 			PRIMARY KEY (dbname, timestamp)
-		) ENGINE=` + r.Engine)
+		) ENGINE=%s`, r.Engine)
+	_, err := r.Conn.Exec(query, r.Engine)
 	if err != nil {
 		return errors.New("failed to create Measurements table: " + err.Error())
 	}

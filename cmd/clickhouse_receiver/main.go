@@ -14,7 +14,6 @@ import (
 func main() {
 
 	// Important Flags
-	// receiverType := flag.String("type", "", "The type of sink that you want to keep this node as.\nAvailable options:\n\t- csv\n\t- text\n\t- parquet")
 	port := flag.String("port", "-1", "Specify the port where you want you sink to receive the measaurements on.")
 	flag.Parse()
 
@@ -24,7 +23,14 @@ func main() {
 	}
 
 	var server sinks.Receiver
-	server, err := NewClickHouseReceiver(os.Getenv("user"), os.Getenv("password"), os.Getenv("server"))
+	user := os.Getenv("user")
+	password := os.Getenv("password")
+	serverURI := os.Getenv("server")
+	log.Println(user, password, serverURI)
+	server, err := NewClickHouseReceiver(user, password, serverURI)
+	if err != nil {
+		log.Fatal("[ERROR]: Unable to create Click house receiver: ", err)
+	}
 
 	rpc.RegisterName("Receiver", server) // Primary Receiver
 	log.Println("[INFO]: Registered Receiver")
