@@ -75,26 +75,6 @@ func GetConnection(user string, password string, dbname string, serverURI string
 	return conn, err
 }
 
-// func GetConnection(user string, password string, dbname string, serverURI string) (driver.Conn, error) {
-// 	conn, err := clickhouse.Open(&clickhouse.Options{
-// 		Addr: []string{serverURI},
-// 		Auth: clickhouse.Auth{
-// 			Database: dbname,
-// 			Username: user,
-// 			Password: password,
-// 		},
-//
-// 		TLS: &tls.Config{
-// 			InsecureSkipVerify: true,
-// 		},
-// 	})
-//
-// 	if err != nil {
-// 		return nil, errors.New("unable to create new connection: " + err.Error())
-// 	}
-// 	return conn, nil
-// }
-
 func NewClickHouseReceiver(user string, password string, dbname string, serverURI string) (chr *ClickHouseReceiver, err error) {
 	// Get clickhouse connection
 	conn, err := GetConnection(user, password, dbname, serverURI)
