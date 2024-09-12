@@ -40,6 +40,36 @@ func initContainer(ctx context.Context, user string, password string, dbname str
 	return clickhouseContainer, nil
 }
 
+func TestGetConnection(t *testing.T) {
+
+	// Variables
+	ctx := context.Background()
+	user := "clickhouse"
+	password := "password"
+	dbname := "testdb"
+
+	// Create new container
+	container, err := initContainer(ctx, user, password, dbname)
+	if err != nil {
+		t.Fatal("[ERROR]: unable to create container. " + err.Error())
+	}
+	defer func() {
+		if err := container.Terminate(context.Background()); err != nil {
+			panic(err)
+		}
+	}()
+
+	mappedPort, err := container.MappedPort(context.Background(), "9000")
+	if err != nil {
+		t.Fatalf("Failed to get mapped port: %s", err)
+	}
+	serverUri := fmt.Sprintf("127.0.0.1:%d", mappedPort.Int())
+	conn, err := GetConnection(user, password, dbname, serverUri)
+
+	assert.Nil(t, err, "ecountered error while getting connection")
+	assert.NotNil(t, conn, "conn is null")
+}
+
 func TestNewClickHouse(t *testing.T) {
 
 	// Variables
