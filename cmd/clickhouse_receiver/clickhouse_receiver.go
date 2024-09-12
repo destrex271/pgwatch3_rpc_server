@@ -101,7 +101,6 @@ func (r *ClickHouseReceiver) SetupTables(ctx context.Context) error {
 
 	// Create Measurements Table
 	query := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS Measurements(dbname String,custom_tags Map(String, String),metric_def String,real_dbname String,system_identifier String,source_type String,data String,timestamp DateTime DEFAULT now(),PRIMARY KEY (dbname, timestamp)) ENGINE=%s`, r.Engine)
-	// _, err := r.Conn.Exec(query, r.Engine)
 	err := r.Conn.Exec(ctx, query, r.Engine)
 	if err != nil {
 		return errors.New("failed to create Measurements table: " + err.Error())
@@ -124,14 +123,14 @@ func (r *ClickHouseReceiver) InsertMeasurements(data *api.MeasurementEnvelope, c
 			log.Println(msg)
 		}
 
-		query := `
+		query := fmt.Sprintf(`
 			INSERT INTO Measurements(dbname, custom_tags, metric_def, real_dbname, system_identifier, source_type, data)
-			VALUES (?, ?, ?, ?, ?, ?, ?);
-		`
+			VALUES ('%s', %s, '%s', '%s', '%s', '%s', '%s');
+		`, data.DBName, customTags, metricDef, data.RealDbname, data.SystemIdentifier, data.SourceType, measurementJson)
 
-		err = r.Conn.Exec(ctx, query, data.DBName, customTags, metricDef, data.RealDbname, data.SystemIdentifier, data.SourceType, measurementJson)
+		err = r.Conn.Exec(ctx, query)
 		if err != nil {
-			msg := "unable to insert data"
+			msg := "unable to insert data - " + err.Error()
 			log.Println("[ERROR]: " + msg)
 			return errors.New(msg)
 		}

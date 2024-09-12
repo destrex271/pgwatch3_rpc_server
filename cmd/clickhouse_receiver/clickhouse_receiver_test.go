@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -38,6 +39,35 @@ func initContainer(ctx context.Context, user string, password string, dbname str
 	time.Sleep(5 * time.Second)
 
 	return clickhouseContainer, nil
+}
+
+func getMeasurementEnvelope() *api.MeasurementEnvelope {
+	measurement := make(map[string]any)
+	measurement["cpu"] = "0.001"
+	measurement["checkpointer"] = "1"
+	var measurements []map[string]any
+	measurements = append(measurements, measurement)
+
+	sql := make(map[int]string)
+	sql[12] = "select * from abc;"
+	metrics := &api.Metric{
+		SQLs:        sql,
+		InitSQL:     "select * from abc;",
+		NodeStatus:  "healthy",
+		StorageName: "teststore",
+		Description: "test metric",
+	}
+
+	return &api.MeasurementEnvelope{
+		DBName:           "test",
+		SourceType:       "test_source",
+		MetricName:       "testMetric",
+		CustomTags:       nil,
+		Data:             measurements,
+		MetricDef:        *metrics,
+		RealDbname:       "test",
+		SystemIdentifier: "Identifier",
+	}
 }
 
 func TestGetConnection(t *testing.T) {
@@ -103,4 +133,42 @@ func TestNewClickHouse(t *testing.T) {
 	_, err = recv.Conn.Query(ctx, "select * from Measurements;")
 
 	assert.Nil(t, err, "Measurements table not generated")
+}
+
+func TestInsertMeasurements(t *testing.T) {
+
+	// Variables
+	ctx := context.Background()
+	user := "clickhouse"
+	password := "password"
+	dbname := "testdb"
+
+	// Create Test container
+	container, err := initContainer(ctx, user, password, dbname)
+	if err != nil {
+		t.Fatal("[ERROR]: unable to create container. " + err.Error())
+	}
+	defer func() {
+		if err := container.Terminate(context.Background()); err != nil {
+			panic(err)
+		}
+	}()
+
+	// dummy data
+	data := getMeasurementEnvelope()
+
+	mappedPort, err := container.MappedPort(context.Background(), "9000")
+	if err != nil {
+		t.Fatalf("Failed to get mapped port: %s", err)
+	}
+
+	uri := fmt.Sprintf("127.0.0.1:%d", mappedPort.Int())
+	recv, err := NewClickHouseReceiver(user, password, dbname, uri)
+
+	assert.Nil(t, err, "Encountered error while creating new receiver")
+	assert.NotNil(t, recv, "Receiver not created")
+
+	// Insert Measurements
+	err = recv.InsertMeasurements(data, ctx)
+	assert.Nil(t, err, "error encountered while inserting measurements")
 }
