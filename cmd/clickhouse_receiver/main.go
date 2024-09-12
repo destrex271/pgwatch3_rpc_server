@@ -26,8 +26,9 @@ func main() {
 	user := os.Getenv("user")
 	password := os.Getenv("password")
 	serverURI := os.Getenv("server")
+	dbname := os.Getenv("dbname")
 	log.Println(user, password, serverURI)
-	server, err := NewClickHouseReceiver(user, password, serverURI)
+	server, err := NewClickHouseReceiver(user, password, dbname, serverURI)
 	if err != nil {
 		log.Fatal("[ERROR]: Unable to create Click house receiver: ", err)
 	}
