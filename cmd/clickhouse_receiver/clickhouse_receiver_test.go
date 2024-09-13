@@ -154,7 +154,7 @@ func TestInsertMeasurements(t *testing.T) {
 		}
 	}()
 
-	// dummy data
+	// test data
 	data := getMeasurementEnvelope()
 
 	mappedPort, err := container.MappedPort(context.Background(), "9000")
@@ -171,4 +171,166 @@ func TestInsertMeasurements(t *testing.T) {
 	// Insert Measurements
 	err = recv.InsertMeasurements(data, ctx)
 	assert.Nil(t, err, "error encountered while inserting measurements")
+}
+
+func TestUpdateMeasurements_VALID_DATA(t *testing.T) {
+	// Variables
+	ctx := context.Background()
+	user := "clickhouse"
+	password := "password"
+	dbname := "testdb"
+
+	// Create Test container
+	container, err := initContainer(ctx, user, password, dbname)
+	if err != nil {
+		t.Fatal("[ERROR]: unable to create container. " + err.Error())
+	}
+	defer func() {
+		if err := container.Terminate(context.Background()); err != nil {
+			panic(err)
+		}
+	}()
+
+	// test data
+	data := getMeasurementEnvelope()
+
+	mappedPort, err := container.MappedPort(context.Background(), "9000")
+	if err != nil {
+		t.Fatalf("Failed to get mapped port: %s", err)
+	}
+
+	uri := fmt.Sprintf("127.0.0.1:%d", mappedPort.Int())
+	recv, err := NewClickHouseReceiver(user, password, dbname, uri)
+
+	assert.Nil(t, err, "Encountered error while creating new receiver")
+	assert.NotNil(t, recv, "Receiver not created")
+
+	// Insert Measurements
+	msg := new(string)
+	err = recv.UpdateMeasurements(data, msg)
+	assert.Nil(t, err, "error encountered while updating measurements")
+	assert.Equal(t, len(*msg), 0, "Error Msg generated for valid data")
+}
+
+func TestUpdateMeasurements_EMPTY_DBNAME(t *testing.T) {
+	// Variables
+	ctx := context.Background()
+	user := "clickhouse"
+	password := "password"
+	dbname := "testdb"
+
+	// Create Test container
+	container, err := initContainer(ctx, user, password, dbname)
+	if err != nil {
+		t.Fatal("[ERROR]: unable to create container. " + err.Error())
+	}
+	defer func() {
+		if err := container.Terminate(context.Background()); err != nil {
+			panic(err)
+		}
+	}()
+
+	// test data
+	data := getMeasurementEnvelope()
+	// set dbname to empty
+	data.DBName = ""
+
+	mappedPort, err := container.MappedPort(context.Background(), "9000")
+	if err != nil {
+		t.Fatalf("Failed to get mapped port: %s", err)
+	}
+
+	uri := fmt.Sprintf("127.0.0.1:%d", mappedPort.Int())
+	recv, err := NewClickHouseReceiver(user, password, dbname, uri)
+
+	assert.Nil(t, err, "Encountered error while creating new receiver")
+	assert.NotNil(t, recv, "Receiver not created")
+
+	// Insert Measurements
+	msg := new(string)
+	err = recv.UpdateMeasurements(data, msg)
+	assert.NotNil(t, err, "no error encountered while updating measurements")
+	assert.EqualError(t, err, "empty database name")
+}
+
+func TestUpdateMeasurements_EMPTY_METRICNAME(t *testing.T) {
+	// Variables
+	ctx := context.Background()
+	user := "clickhouse"
+	password := "password"
+	dbname := "testdb"
+
+	// Create Test container
+	container, err := initContainer(ctx, user, password, dbname)
+	if err != nil {
+		t.Fatal("[ERROR]: unable to create container. " + err.Error())
+	}
+	defer func() {
+		if err := container.Terminate(context.Background()); err != nil {
+			panic(err)
+		}
+	}()
+
+	// test data
+	data := getMeasurementEnvelope()
+	// set dbname to empty
+	data.MetricName = ""
+
+	mappedPort, err := container.MappedPort(context.Background(), "9000")
+	if err != nil {
+		t.Fatalf("Failed to get mapped port: %s", err)
+	}
+
+	uri := fmt.Sprintf("127.0.0.1:%d", mappedPort.Int())
+	recv, err := NewClickHouseReceiver(user, password, dbname, uri)
+
+	assert.Nil(t, err, "Encountered error while creating new receiver")
+	assert.NotNil(t, recv, "Receiver not created")
+
+	// Insert Measurements
+	msg := new(string)
+	err = recv.UpdateMeasurements(data, msg)
+	assert.NotNil(t, err, "no error encountered while updating measurements")
+	assert.EqualError(t, err, "empty metric name")
+}
+
+func TestUpdateMeasurements_EMPTY_DATA(t *testing.T) {
+	// Variables
+	ctx := context.Background()
+	user := "clickhouse"
+	password := "password"
+	dbname := "testdb"
+
+	// Create Test container
+	container, err := initContainer(ctx, user, password, dbname)
+	if err != nil {
+		t.Fatal("[ERROR]: unable to create container. " + err.Error())
+	}
+	defer func() {
+		if err := container.Terminate(context.Background()); err != nil {
+			panic(err)
+		}
+	}()
+
+	// test data
+	data := getMeasurementEnvelope()
+	// set dbname to empty
+	data.Data = nil
+
+	mappedPort, err := container.MappedPort(context.Background(), "9000")
+	if err != nil {
+		t.Fatalf("Failed to get mapped port: %s", err)
+	}
+
+	uri := fmt.Sprintf("127.0.0.1:%d", mappedPort.Int())
+	recv, err := NewClickHouseReceiver(user, password, dbname, uri)
+
+	assert.Nil(t, err, "Encountered error while creating new receiver")
+	assert.NotNil(t, recv, "Receiver not created")
+
+	// Insert Measurements
+	msg := new(string)
+	err = recv.UpdateMeasurements(data, msg)
+	assert.NotNil(t, err, "no error encountered while updating measurements")
+	assert.EqualError(t, err, "no measurements")
 }
