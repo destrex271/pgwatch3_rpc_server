@@ -5,6 +5,7 @@ import (
 	"log"
 	"testing"
 
+	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/stretchr/testify/assert"
 	tcollama "github.com/testcontainers/testcontainers-go/modules/ollama"
 )
@@ -28,6 +29,35 @@ func initContainer(ctx context.Context) (*tcollama.OllamaContainer, error) {
 	}
 
 	return ollamaContainer, nil
+}
+
+func getMeasurementEnvelope() *api.MeasurementEnvelope {
+	measurement := make(map[string]any)
+	measurement["cpu"] = "0.001"
+	measurement["checkpointer"] = "1"
+	var measurements []map[string]any
+	measurements = append(measurements, measurement)
+
+	sql := make(map[int]string)
+	sql[12] = "select * from abc;"
+	metrics := &api.Metric{
+		SQLs:        sql,
+		InitSQL:     "select * from abc;",
+		NodeStatus:  "healthy",
+		StorageName: "teststore",
+		Description: "test metric",
+	}
+
+	return &api.MeasurementEnvelope{
+		DBName:           "test",
+		SourceType:       "test_source",
+		MetricName:       "testMetric",
+		CustomTags:       nil,
+		Data:             measurements,
+		MetricDef:        *metrics,
+		RealDbname:       "test",
+		SystemIdentifier: "Identifier",
+	}
 }
 
 func TestNewLlamaReceiver(t *testing.T) {
@@ -55,4 +85,10 @@ func TestNewLlamaReceiver(t *testing.T) {
 
 	assert.NotNil(t, recv, "Receiver object is nil")
 	assert.Nil(t, err, "Error encountered while creating receiver")
+}
+
+func TestUpdateMeasurements(t *testing.T) {
+	recv, _ := NewLlamaReceiver("http://localhost:11434")
+	logMsg := new(string)
+	recv.UpdateMeasurements(getMeasurementEnvelope(), logMsg)
 }
