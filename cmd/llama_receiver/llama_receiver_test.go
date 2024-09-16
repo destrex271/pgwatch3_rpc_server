@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"math/rand"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -33,14 +32,12 @@ func initOllamaContainer(ctx context.Context) (*tcollama.OllamaContainer, error)
 }
 
 func initPostgresContainer(ctx context.Context) (*postgres.PostgresContainer, error) {
-	dbName := "users"
-	dbUser := "user"
-	dbPassword := "password"
+	dbName := "postgres"
+	dbUser := "postgres"
+	dbPassword := "postgres"
 
 	postgresContainer, err := postgres.Run(ctx,
 		"docker.io/postgres:16-alpine",
-		postgres.WithInitScripts(filepath.Join("testdata", "init-user-db.sh")),
-		postgres.WithConfigFile(filepath.Join("testdata", "my-postgres.conf")),
 		postgres.WithDatabase(dbName),
 		postgres.WithUsername(dbUser),
 		postgres.WithPassword(dbPassword),
