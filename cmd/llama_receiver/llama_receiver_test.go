@@ -5,7 +5,6 @@ import (
 	"log"
 	"math/rand"
 	"testing"
-	"time"
 
 	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/stretchr/testify/assert"
@@ -15,17 +14,19 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-func initOllamaContainer(ctx context.Context) (*tcollama.OllamaContainer, error) {
+func initOllamaContainer(ctx context.Context, doPull bool) (*tcollama.OllamaContainer, error) {
 	ollamaContainer, err := tcollama.Run(ctx, "ollama/ollama:0.1.25")
 	if err != nil {
 		log.Printf("failed to start container: %s", err)
 		return nil, err
 	}
 
-	_, _, err = ollamaContainer.Exec(ctx, []string{"ollama", "pull", "tinyllama"})
-	if err != nil {
-		log.Println("unable to pull llama3: " + err.Error())
-		return nil, err
+	if doPull {
+		_, _, err = ollamaContainer.Exec(ctx, []string{"ollama", "pull", "tinyllama"})
+		if err != nil {
+			log.Println("unable to pull llama3: " + err.Error())
+			return nil, err
+		}
 	}
 
 	return ollamaContainer, nil
@@ -42,9 +43,7 @@ func initPostgresContainer(ctx context.Context) (*postgres.PostgresContainer, er
 		postgres.WithUsername(dbUser),
 		postgres.WithPassword(dbPassword),
 		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(5*time.Second)),
+			wait.ForLog("database system is ready to accept connections")),
 	)
 
 	if err != nil {
@@ -85,7 +84,7 @@ func getMeasurementEnvelope() *api.MeasurementEnvelope {
 func TestNewLlamaReceiver(t *testing.T) {
 	ctx := context.Background()
 
-	ollamaContainer, err := initOllamaContainer(ctx)
+	ollamaContainer, err := initOllamaContainer(ctx, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +125,7 @@ func TestNewLlamaReceiver(t *testing.T) {
 func TestSetupTables(t *testing.T) {
 	ctx := context.Background()
 
-	ollamaContainer, err := initOllamaContainer(ctx)
+	ollamaContainer, err := initOllamaContainer(ctx, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,11 +179,11 @@ func TestSetupTables(t *testing.T) {
 	// Check postgres for Measurement table
 	err = recv.DbConn.QueryRow(recv.Ctx, `SELECT EXISTS (
 		SELECT FROM information_schema.tables 
-		WHERE  table_name   = 'Measurement'
+		WHERE  table_name   = 'measurement'
     );`).Scan(&doesExist)
 
 	assert.Nil(t, err, "error encountered while querying table")
-	assert.True(t, doesExist, "table Measurements does not exist")
+	assert.True(t, doesExist, "table Measurement does not exist")
 
 	// Check postgres for Insights
 	err = recv.DbConn.QueryRow(recv.Ctx, `SELECT EXISTS (
@@ -199,7 +198,7 @@ func TestSetupTables(t *testing.T) {
 func TestUpdateMeasurements_VALID(t *testing.T) {
 	ctx := context.Background()
 
-	ollamaContainer, err := initOllamaContainer(ctx)
+	ollamaContainer, err := initOllamaContainer(ctx, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,7 +262,7 @@ func TestUpdateMeasurements_VALID(t *testing.T) {
 func TestUpdateMeasurements_EMPTYDB(t *testing.T) {
 	ctx := context.Background()
 
-	ollamaContainer, err := initOllamaContainer(ctx)
+	ollamaContainer, err := initOllamaContainer(ctx, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -313,7 +312,7 @@ func TestUpdateMeasurements_EMPTYDB(t *testing.T) {
 func TestUpdateMeasurements_EMPTY_METRICNAME(t *testing.T) {
 	ctx := context.Background()
 
-	ollamaContainer, err := initOllamaContainer(ctx)
+	ollamaContainer, err := initOllamaContainer(ctx, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -363,7 +362,7 @@ func TestUpdateMeasurements_EMPTY_METRICNAME(t *testing.T) {
 func TestUpdateMeasurements_EMPTY_DATA(t *testing.T) {
 	ctx := context.Background()
 
-	ollamaContainer, err := initOllamaContainer(ctx)
+	ollamaContainer, err := initOllamaContainer(ctx, true)
 	if err != nil {
 		t.Fatal(err)
 	}
