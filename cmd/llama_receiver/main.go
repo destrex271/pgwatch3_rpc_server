@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 	"net"
@@ -15,6 +16,7 @@ func main() {
 	// receiverType := flag.String("type", "", "The type of sink that you want to keep this node as.\nAvailable options:\n\t- csv\n\t- text\n\t- parquet")
 	port := flag.String("port", "-1", "Specify the port where you want you sink to receive the measaurements on.")
 	serverURI := flag.String("ollamaURI", "http://localhost:11393", "URI for Ollama server")
+	pgURI := flag.String("pgURI", "postgres://postgres:postgres@localhost:5432/postgres", "connection string for postgres")
 	flag.Parse()
 
 	if *port == "-1" {
@@ -23,7 +25,10 @@ func main() {
 	}
 
 	var server sinks.Receiver
-	server, err := NewLlamaReceiver(*serverURI)
+	server, err := NewLlamaReceiver(*serverURI, *pgURI, context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	rpc.RegisterName("Receiver", server) // Primary Receiver
 	log.Println("[INFO]: Registered Receiver")
