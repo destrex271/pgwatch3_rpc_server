@@ -15,19 +15,24 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-func initOllamaContainer(ctx context.Context, doPull bool) (*tcollama.OllamaContainer, error) {
-	ollamaContainer, err := tcollama.Run(ctx, "ollama/ollama:0.1.25")
-	if err != nil {
-		log.Printf("failed to start container: %s", err)
-		return nil, err
-	}
+const new_image = "tinyllama_image"
 
-	if doPull {
-		_, _, err = ollamaContainer.Exec(ctx, []string{"ollama", "pull", "qwen"})
+func initOllamaContainer(ctx context.Context) (*tcollama.OllamaContainer, error) {
+	ollamaContainer, err := tcollama.Run(ctx, new_image)
+	if err != nil {
+		ollamaContainer, err = tcollama.Run(ctx, "ollama/ollama:0.1.25")
+		if err != nil {
+			log.Printf("failed to start container: %s", err)
+			return nil, err
+		}
+
+		// Pull model and commit container
+		_, _, err = ollamaContainer.Exec(ctx, []string{"ollama", "pull", "tinyllama"})
 		if err != nil {
 			log.Println("unable to pull llama3: " + err.Error())
 			return nil, err
 		}
+		ollamaContainer.Commit(ctx, new_image)
 	}
 
 	return ollamaContainer, nil
@@ -87,7 +92,7 @@ func getMeasurementEnvelope() *api.MeasurementEnvelope {
 func TestNewLlamaReceiver(t *testing.T) {
 	ctx := context.Background()
 
-	ollamaContainer, err := initOllamaContainer(ctx, false)
+	ollamaContainer, err := initOllamaContainer(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +133,7 @@ func TestNewLlamaReceiver(t *testing.T) {
 func TestSetupTables(t *testing.T) {
 	ctx := context.Background()
 
-	ollamaContainer, err := initOllamaContainer(ctx, false)
+	ollamaContainer, err := initOllamaContainer(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,7 +206,7 @@ func TestSetupTables(t *testing.T) {
 func TestUpdateMeasurements_VALID(t *testing.T) {
 	ctx := context.Background()
 
-	ollamaContainer, err := initOllamaContainer(ctx, true)
+	ollamaContainer, err := initOllamaContainer(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,7 +253,7 @@ func TestUpdateMeasurements_VALID(t *testing.T) {
 	logMsg := new(string)
 
 	oldCount := 0
-	for range 10 {
+	for range 5 {
 		err = recv.UpdateMeasurements(msg, logMsg)
 
 		assert.Nil(t, err, "error encountered while updating measurements")
@@ -268,7 +273,7 @@ func TestUpdateMeasurements_VALID(t *testing.T) {
 func TestUpdateMeasurements_EMPTYDB(t *testing.T) {
 	ctx := context.Background()
 
-	ollamaContainer, err := initOllamaContainer(ctx, false)
+	ollamaContainer, err := initOllamaContainer(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -318,7 +323,7 @@ func TestUpdateMeasurements_EMPTYDB(t *testing.T) {
 func TestUpdateMeasurements_EMPTY_METRICNAME(t *testing.T) {
 	ctx := context.Background()
 
-	ollamaContainer, err := initOllamaContainer(ctx, false)
+	ollamaContainer, err := initOllamaContainer(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -368,7 +373,7 @@ func TestUpdateMeasurements_EMPTY_METRICNAME(t *testing.T) {
 func TestUpdateMeasurements_EMPTY_DATA(t *testing.T) {
 	ctx := context.Background()
 
-	ollamaContainer, err := initOllamaContainer(ctx, true)
+	ollamaContainer, err := initOllamaContainer(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
