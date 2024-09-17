@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/stretchr/testify/assert"
@@ -22,7 +23,7 @@ func initOllamaContainer(ctx context.Context, doPull bool) (*tcollama.OllamaCont
 	}
 
 	if doPull {
-		_, _, err = ollamaContainer.Exec(ctx, []string{"ollama", "pull", "tinyllama"})
+		_, _, err = ollamaContainer.Exec(ctx, []string{"ollama", "pull", "qwen"})
 		if err != nil {
 			log.Println("unable to pull llama3: " + err.Error())
 			return nil, err
@@ -43,7 +44,9 @@ func initPostgresContainer(ctx context.Context) (*postgres.PostgresContainer, er
 		postgres.WithUsername(dbUser),
 		postgres.WithPassword(dbPassword),
 		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections")),
+			wait.ForLog("database system is ready to accept connections").
+				WithOccurrence(2).
+				WithStartupTimeout(5*time.Second)),
 	)
 
 	if err != nil {
@@ -84,7 +87,7 @@ func getMeasurementEnvelope() *api.MeasurementEnvelope {
 func TestNewLlamaReceiver(t *testing.T) {
 	ctx := context.Background()
 
-	ollamaContainer, err := initOllamaContainer(ctx, true)
+	ollamaContainer, err := initOllamaContainer(ctx, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +265,7 @@ func TestUpdateMeasurements_VALID(t *testing.T) {
 func TestUpdateMeasurements_EMPTYDB(t *testing.T) {
 	ctx := context.Background()
 
-	ollamaContainer, err := initOllamaContainer(ctx, true)
+	ollamaContainer, err := initOllamaContainer(ctx, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -312,7 +315,7 @@ func TestUpdateMeasurements_EMPTYDB(t *testing.T) {
 func TestUpdateMeasurements_EMPTY_METRICNAME(t *testing.T) {
 	ctx := context.Background()
 
-	ollamaContainer, err := initOllamaContainer(ctx, true)
+	ollamaContainer, err := initOllamaContainer(ctx, false)
 	if err != nil {
 		t.Fatal(err)
 	}
