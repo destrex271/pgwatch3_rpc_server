@@ -266,6 +266,74 @@ func TestUpdateMeasurements_VALID(t *testing.T) {
 	assert.Equal(t, newInsightsCount, 1, "No new entries inserted in insights table")
 }
 
+// Insert multiple records
+func TestUpdateMeasurements_VALID_Multiple(t *testing.T) {
+	ctx := context.Background()
+
+	ollamaContainer, err := initOllamaContainer(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	postgresContainer, err := initPostgresContainer(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer func() {
+		if err := ollamaContainer.Terminate(ctx); err != nil {
+			log.Printf("failed to terminate container: %s", err)
+		}
+		if err := postgresContainer.Terminate(ctx); err != nil {
+			log.Printf("failed to terminate container: %s", err)
+		}
+	}()
+
+	// Create new receiver
+	connectionStr, err := ollamaContainer.ConnectionString(ctx)
+	if err != nil {
+		log.Println("Unable to get ollama connection string")
+		t.Fatal(err)
+	}
+
+	pgConnectionStr, err := postgresContainer.ConnectionString(ctx)
+	if err != nil {
+		log.Println("Unable to get Postgres connection string")
+		t.Fatal(err)
+	}
+
+	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx)
+
+	assert.NotNil(t, recv, "Receiver object is nil")
+	assert.Nil(t, err, "Error encountered while creating receiver")
+
+	// Get current number of insights in database
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Send Update Measurements
+	msg := getMeasurementEnvelope()
+	logMsg := new(string)
+
+	oldCount := 0
+	for range 10 {
+		err = recv.UpdateMeasurements(msg, logMsg)
+
+		assert.Nil(t, err, "error encountered while updating measurements")
+
+		// Check insights table for new entry
+		newInsightsCount := 0
+		err = recv.DbConn.QueryRow(recv.Ctx, "select count(*) from insights;").Scan(&newInsightsCount)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		assert.Greater(t, newInsightsCount, oldCount, "No new entries inserted in insights table")
+		oldCount = newInsightsCount
+	}
+}
+
 func TestUpdateMeasurements_EMPTYDB(t *testing.T) {
 	ctx := context.Background()
 
