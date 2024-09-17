@@ -172,11 +172,12 @@ func (r *LlamaReceiver) GetDbID(dbname string) int {
 
 func (r *LlamaReceiver) AddInsights(dbid int, insights string) error {
 	// Insert model response in table insights
-	query := fmt.Sprintf(`INSERT INTO Insights(database_id, insight_data) VALUES(%d, '%s')`, dbid, insights)
-	log.Println(query)
-	_, err := r.DbConn.Exec(r.Ctx, query)
+	query := `INSERT INTO Insights(database_id, insight_data) VALUES($1, $2)`
+
+	// Execute the query with parameters
+	_, err := r.DbConn.Exec(r.Ctx, query, dbid, insights)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to execute query: %w", err)
 	}
 
 	return nil

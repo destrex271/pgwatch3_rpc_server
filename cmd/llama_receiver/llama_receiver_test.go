@@ -252,22 +252,18 @@ func TestUpdateMeasurements_VALID(t *testing.T) {
 	msg := getMeasurementEnvelope()
 	logMsg := new(string)
 
-	oldCount := 0
-	for range 5 {
-		err = recv.UpdateMeasurements(msg, logMsg)
+	err = recv.UpdateMeasurements(msg, logMsg)
 
-		assert.Nil(t, err, "error encountered while updating measurements")
+	assert.Nil(t, err, "error encountered while updating measurements")
 
-		// Check insights table for new entry
-		newInsightsCount := 0
-		err = recv.DbConn.QueryRow(recv.Ctx, "select count(*) from insights;").Scan(&newInsightsCount)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		assert.Greater(t, newInsightsCount, oldCount, "No new entries inserted in insights table")
-		oldCount = newInsightsCount
+	// Check insights table for new entry
+	newInsightsCount := 0
+	err = recv.DbConn.QueryRow(recv.Ctx, "select count(*) from insights;").Scan(&newInsightsCount)
+	if err != nil {
+		t.Fatal(err)
 	}
+
+	assert.Equal(t, newInsightsCount, 1, "No new entries inserted in insights table")
 }
 
 func TestUpdateMeasurements_EMPTYDB(t *testing.T) {
