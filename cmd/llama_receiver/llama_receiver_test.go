@@ -239,8 +239,6 @@ func TestUpdateMeasurements_VALID(t *testing.T) {
 	assert.Nil(t, err, "Error encountered while creating receiver")
 
 	// Get current number of insights in database
-	oldInsightsCount := 0
-	err = recv.DbConn.QueryRow(recv.Ctx, "select count(*) from insights;").Scan(&oldInsightsCount)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,18 +246,23 @@ func TestUpdateMeasurements_VALID(t *testing.T) {
 	// Send Update Measurements
 	msg := getMeasurementEnvelope()
 	logMsg := new(string)
-	err = recv.UpdateMeasurements(msg, logMsg)
 
-	assert.Nil(t, err, "error encountered while updating measurements")
+	oldCount := 0
+	for range 10 {
+		err = recv.UpdateMeasurements(msg, logMsg)
 
-	// Check insights table for new entry
-	newInsightsCount := 0
-	err = recv.DbConn.QueryRow(recv.Ctx, "select count(*) from insights;").Scan(&newInsightsCount)
-	if err != nil {
-		t.Fatal(err)
+		assert.Nil(t, err, "error encountered while updating measurements")
+
+		// Check insights table for new entry
+		newInsightsCount := 0
+		err = recv.DbConn.QueryRow(recv.Ctx, "select count(*) from insights;").Scan(&newInsightsCount)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		assert.Greater(t, newInsightsCount, oldCount, "No new entries inserted in insights table")
+		oldCount = newInsightsCount
 	}
-
-	assert.Greater(t, newInsightsCount, oldInsightsCount, "No new entries inserted in insights table")
 }
 
 func TestUpdateMeasurements_EMPTYDB(t *testing.T) {
