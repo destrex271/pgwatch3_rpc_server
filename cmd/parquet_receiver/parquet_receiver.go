@@ -30,13 +30,18 @@ func (r ParqReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *s
 
 	if len(msg.DBName) == 0 {
 		*logMsg = "False Record delieverd"
-		return errors.New("Empty Record!")
+		return errors.New("Empty Database")
+	}
+
+	if len(msg.MetricName) == 0 {
+		*logMsg = "False Record delievered"
+		return errors.New("Empty Metric Name")
 	}
 
 	filename := msg.DBName + ".parquet"
 
 	// Create temporary storage and buffer storage
-	buffer_path := r.FullPath + "/buffer_storage"
+	buffer_path := r.FullPath + "/parquet_readings"
 	os.MkdirAll(buffer_path, os.ModePerm)
 
 	if _, err := os.Stat(buffer_path + "/" + filename); errors.Is(err, os.ErrNotExist) {
@@ -47,6 +52,7 @@ func (r ParqReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *s
 	_, err := os.Open(buffer_path + "/" + filename)
 	if err != nil {
 		log.Println("[ERROR]: Unable to open file", err)
+		return err
 	}
 
 	data_points, err := parquet.ReadFile[ParquetSchema](buffer_path + "/" + filename)
@@ -73,7 +79,8 @@ func (r ParqReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *s
 	err = parquet.WriteFile(buffer_path+"/"+filename, data_points)
 
 	if err != nil {
-		log.Fatal("[ERROR]: Unable to write to file.\nStacktrace -> ", err)
+		log.Println("[ERROR]: Unable to write to file.\nStacktrace -> ", err)
+		return err
 	}
 
 	return nil
