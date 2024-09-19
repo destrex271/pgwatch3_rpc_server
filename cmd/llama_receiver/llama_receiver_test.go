@@ -238,7 +238,7 @@ func TestUpdateMeasurements_VALID(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx, 10)
+	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx, 1)
 
 	assert.NotNil(t, recv, "Receiver object is nil")
 	assert.Nil(t, err, "Error encountered while creating receiver")
@@ -258,6 +258,7 @@ func TestUpdateMeasurements_VALID(t *testing.T) {
 
 	// Check insights table for new entry
 	newInsightsCount := 0
+	time.Sleep(60 * time.Second)
 	err = recv.DbConn.QueryRow(recv.Ctx, "select count(*) from insights;").Scan(&newInsightsCount)
 	if err != nil {
 		t.Fatal(err)
@@ -302,7 +303,7 @@ func TestUpdateMeasurements_VALID_Multiple(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx, 4)
+	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx, 1)
 
 	assert.NotNil(t, recv, "Receiver object is nil")
 	assert.Nil(t, err, "Error encountered while creating receiver")
@@ -323,6 +324,9 @@ func TestUpdateMeasurements_VALID_Multiple(t *testing.T) {
 	}
 
 	newInsightsCount := 0
+	t.Log("waiting.....")
+	time.Sleep(60 * time.Second) // Wait for 7 seconds to allow llm to generate stuff
+	t.Log("waiting done")
 	err = recv.DbConn.QueryRow(recv.Ctx, "select count(*) from insights;").Scan(&newInsightsCount)
 	if err != nil {
 		t.Fatal(err)
