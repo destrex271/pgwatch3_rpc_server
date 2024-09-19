@@ -17,7 +17,14 @@ import (
 	"github.com/rifaideen/talkative"
 )
 
-const contextString = "You are an expert in extracting critical information out of PostgreSQL database metrics and measurements. I'll be providing you with a set of measurements for a single metric of a database. I need you to derive insights from them. Do all this analysis and provide me with a report about your insights and suggestions from studying the measurements provided.\nThe metrics are:\n{DATA}.\nProvide me with your analysis.\nI don't want methods, just give me your observations and analysis of the provided data."
+const contextString = `
+You are an expert in analyzing PostgreSQL database metrics. I will provide you with a set of measurements for a specific database metric. Based on this data, I need you to derive actionable insights and recommendations. Please focus solely on your observations and analysis, without detailing any methods.
+
+The metrics are:  
+{DATA}  
+
+Please deliver a comprehensive report with your insights and suggestions based on the provided measurements.
+`
 
 type Batch map[string][]*api.MeasurementEnvelope
 
