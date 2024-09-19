@@ -25,7 +25,7 @@ This program acts as an RPC server and requires the following flags to operate:
 **Example:**
 
 ```bash
-./pgwatch3_rpc_server -port 8080 -rootFolder /data/metrics
+./pgwatch3_rpc_server -port=8080 -rootFolder=/data/metrics
 ```
 
 
