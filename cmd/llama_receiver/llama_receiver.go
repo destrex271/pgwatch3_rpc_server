@@ -97,7 +97,7 @@ func (r *LlamaReceiver) SetupTables() error {
 	_, err = r.DbConn.Exec(r.Ctx, `CREATE TABLE IF NOT EXISTS Measurement (
 		created_time TIMESTAMP NOT NULL DEFAULT(NOW() AT TIME ZONE 'UTC'),
 		data JSONB,
-		metric_name VARCHAR(255),
+		metric_name TEXT,
 		database_id SERIAL,
 		FOREIGN KEY (database_id) REFERENCES Db(id)
 	);`)
