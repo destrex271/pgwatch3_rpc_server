@@ -88,7 +88,7 @@ func NewLlamaReceiver(llmServerURI string, pgURI string, ctx context.Context, ba
 }
 
 func (r *LlamaReceiver) SetupTables() error {
-	_, err := r.DbConn.Exec(r.Ctx, `CREATE TABLE IF NOT EXISTS db(id bigserial PRIMARY KEY, dbname text)`)
+	_, err := r.DbConn.Exec(r.Ctx, `CREATE TABLE IF NOT EXISTS db(id bigserial PRIMARY KEY, dbname TEXT)`)
 	if err != nil {
 		log.Println("[ERROR]: unable to create Db table : " + err.Error())
 		return err
@@ -107,10 +107,10 @@ func (r *LlamaReceiver) SetupTables() error {
 	}
 
 	_, err = r.DbConn.Exec(r.Ctx, `CREATE TABLE IF NOT EXISTS Insights(
-		insight_data text, 
-		database_id serial, 
+		insight_data TEXT, 
+		database_id BIGSERIAL, 
 		created_time TIMESTAMP NOT NULL DEFAULT(NOW() AT TIME ZONE 'UTC'),
-		foreign key (database_id) references Db(id) 
+		FOREIGN KEY (database_id) REFERENCES Db(id) 
 	)`)
 	if err != nil {
 		log.Println("[ERROR]: unable to create Insigths table : " + err.Error())
@@ -157,7 +157,7 @@ func (r *LlamaReceiver) AddMeasurements(msg *api.MeasurementEnvelope) error {
 }
 
 func (r *LlamaReceiver) GetAllMeasurements(dbname string, metric_name string, context_size uint) ([]MeasurementsData, error) {
-	query := fmt.Sprintf("Select database_id, metric_name, data from Measurement inner join Db on Measurement.database_id = Db.id where Db.dbname = '%s' ORDER BY created_time DESC LIMIT %d", dbname, context_size)
+	query := fmt.Sprintf("SELECT database_id, metric_name, data FROM Measurement INNER JOIN Db ON Measurement.database_id = Db.id WHERE Db.dbname = '%s' ORDER BY created_time DESC LIMIT %d", dbname, context_size)
 	rows, err := r.DbConn.Query(r.Ctx, query)
 	if err != nil {
 		return nil, err
@@ -290,13 +290,6 @@ func (r *LlamaReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg 
 	if len(msg.Data) == 0 {
 		return errors.New("empty measurement list")
 	}
-
-	// err := r.SetupTables()
-	// if err != nil {
-	// 	*logMsg = "unable to setup tables"
-	// 	log.Println("[ERROR]: unable to setup tables : " + err.Error())
-	// 	return err
-	// }
 
 	// Mapping to batch measurements according to epoch time
 	err := r.AddMeasurements(msg)
