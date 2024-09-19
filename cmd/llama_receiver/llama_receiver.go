@@ -88,7 +88,7 @@ func NewLlamaReceiver(llmServerURI string, pgURI string, ctx context.Context, ba
 }
 
 func (r *LlamaReceiver) SetupTables() error {
-	_, err := r.DbConn.Exec(r.Ctx, `CREATE TABLE IF NOT EXISTS Db(id serial Primary key, dbname varchar(255))`)
+	_, err := r.DbConn.Exec(r.Ctx, `CREATE TABLE IF NOT EXISTS db(id bigserial PRIMARY KEY, dbname text)`)
 	if err != nil {
 		log.Println("[ERROR]: unable to create Db table : " + err.Error())
 		return err
