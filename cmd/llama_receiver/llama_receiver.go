@@ -6,7 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
@@ -14,7 +17,9 @@ import (
 	"github.com/rifaideen/talkative"
 )
 
-const contextString = "You are an expert in extracting critical information out of PostgreSQL database metrics and measurements. I'll be providing you with a set of measurements for a single metric of a database. I need you to derive insights from them. Do all this analysis and provide me with a report about your insights and suggestions from studying the measurements provided.\nThe metric name and measurements are:\n{DATA}.\nProvide me with your analysis.\nI don't want methods, just give me your observations. Your output format should be [Metric : Your Analysis]"
+const contextString = "You are an expert in extracting critical information out of PostgreSQL database metrics and measurements. I'll be providing you with a set of measurements for a single metric of a database. I need you to derive insights from them. Do all this analysis and provide me with a report about your insights and suggestions from studying the measurements provided.\nThe metrics are:\n{DATA}.\nProvide me with your analysis.\nI don't want methods, just give me your observations and analysis of the provided data."
+
+type Batch map[string][]*api.MeasurementEnvelope
 
 type LlamaReceiver struct {
 	Client    *talkative.Client
@@ -22,6 +27,10 @@ type LlamaReceiver struct {
 	Ctx       context.Context
 	ServerURI string
 	DbConn    *pgx.Conn
+	AltDbConn *pgx.Conn
+	MsmtBatch Batch
+	BatchSize int
+	mu        sync.Mutex
 	sinks.SyncMetricHandler
 }
 
@@ -31,15 +40,23 @@ type MeasurementsData struct {
 	data       string
 }
 
-func NewLlamaReceiver(llmServerURI string, pgURI string, ctx context.Context) (recv *LlamaReceiver, err error) {
+func NewLlamaReceiver(llmServerURI string, pgURI string, ctx context.Context, batchSize int) (recv *LlamaReceiver, err error) {
 	client, err := talkative.New(llmServerURI)
 	if err != nil {
+		log.Println("[ERROR]: unable to initialize llm client")
 		return nil, err
 	}
 
 	conn, err := pgx.Connect(ctx, pgURI)
 	if err != nil {
+		log.Println("[ERROR]: unable to connect to postgres instance")
 		return nil, err
+	}
+
+	// To use in insight generation to avoid any stuff
+	altConn, err := pgx.Connect(ctx, pgURI)
+	if err != nil {
+		log.Println("[ERROR]: unable to obtain additional connectionj")
 	}
 
 	recv = &LlamaReceiver{
@@ -48,7 +65,16 @@ func NewLlamaReceiver(llmServerURI string, pgURI string, ctx context.Context) (r
 		Ctx:               ctx,
 		ServerURI:         llmServerURI,
 		DbConn:            conn,
+		AltDbConn:         altConn,
+		MsmtBatch:         make(Batch),
+		BatchSize:         batchSize,
 		SyncMetricHandler: sinks.NewSyncMetricHandler(1024),
+	}
+
+	err = recv.SetupTables()
+	if err != nil {
+		log.Println("[ERROR]: unable to setup tables: ", err)
+		return nil, err
 	}
 
 	return recv, nil
@@ -57,6 +83,7 @@ func NewLlamaReceiver(llmServerURI string, pgURI string, ctx context.Context) (r
 func (r *LlamaReceiver) SetupTables() error {
 	_, err := r.DbConn.Exec(r.Ctx, `CREATE TABLE IF NOT EXISTS Db(id serial Primary key, dbname varchar(255))`)
 	if err != nil {
+		log.Println("[ERROR]: unable to create Db table : " + err.Error())
 		return err
 	}
 
@@ -68,6 +95,7 @@ func (r *LlamaReceiver) SetupTables() error {
 		FOREIGN KEY (database_id) REFERENCES Db(id)
 	);`)
 	if err != nil {
+		log.Println("[ERROR]: unable to create Measurement table : " + err.Error())
 		return err
 	}
 
@@ -78,6 +106,7 @@ func (r *LlamaReceiver) SetupTables() error {
 		foreign key (database_id) references Db(id) 
 	)`)
 	if err != nil {
+		log.Println("[ERROR]: unable to create Insigths table : " + err.Error())
 		return err
 	}
 
@@ -122,7 +151,6 @@ func (r *LlamaReceiver) AddMeasurements(msg *api.MeasurementEnvelope) error {
 
 func (r *LlamaReceiver) GetAllMeasurements(dbname string, metric_name string, context_size uint) ([]MeasurementsData, error) {
 	query := fmt.Sprintf("Select database_id, metric_name, data from Measurement inner join Db on Measurement.database_id = Db.id where Db.dbname = '%s' ORDER BY created_time DESC LIMIT %d", dbname, context_size)
-	log.Println(query)
 	rows, err := r.DbConn.Query(r.Ctx, query)
 	if err != nil {
 		return nil, err
@@ -137,7 +165,6 @@ func (r *LlamaReceiver) GetAllMeasurements(dbname string, metric_name string, co
 			log.Println(err)
 			continue
 		}
-		log.Println(cur_data)
 		data = append(data, cur_data)
 	}
 
@@ -175,9 +202,66 @@ func (r *LlamaReceiver) AddInsights(dbid int, insights string) error {
 	query := `INSERT INTO Insights(database_id, insight_data) VALUES($1, $2)`
 
 	// Execute the query with parameters
-	_, err := r.DbConn.Exec(r.Ctx, query, dbid, insights)
+	_, err := r.AltDbConn.Exec(r.Ctx, query, dbid, insights)
 	if err != nil {
 		return fmt.Errorf("failed to execute query: %w", err)
+	}
+
+	return nil
+}
+
+func (r *LlamaReceiver) GenerateInsights(msg api.MeasurementEnvelope) error {
+	final_msg, err := r.PreparePrompt(msg.DBName, msg.MetricName)
+	if err != nil {
+		return err
+	}
+
+	model := "tinyllama"
+	model_response := ""
+	// Callback function to handle the response
+	callback := func(cr string, err error) {
+		if err != nil {
+			fmt.Println(err)
+
+			return
+		}
+
+		var response talkative.ChatResponse
+
+		if err := json.Unmarshal([]byte(cr), &response); err != nil {
+			log.Println(err)
+			return
+		}
+
+		model_response += response.Message.Content
+	}
+
+	var params *talkative.ChatParams = nil
+
+	log.Println("Working on metrics....")
+	// The chat message to send
+	message := talkative.ChatMessage{
+		Role:    talkative.USER, // Initiate the chat as a user
+		Content: final_msg,
+	}
+
+	done, err := r.Client.PlainChat(model, callback, params, message)
+
+	if err != nil {
+		// Unable to start chat
+		return errors.New("unable to send message to client. Please check if your ollama instance is up and running")
+	}
+
+	<-done // wait for the chat to complete
+	log.Println("Completed ->", model_response)
+	id := r.GetDbID(msg.DBName)
+	if id == -1 {
+		return errors.New("unable to find database in records")
+	}
+
+	err = r.AddInsights(id, model_response)
+	if err != nil {
+		return errors.New("unable to add new insights")
 	}
 
 	return nil
@@ -200,70 +284,56 @@ func (r *LlamaReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg 
 		return errors.New("empty measurement list")
 	}
 
-	err := r.SetupTables()
+	// err := r.SetupTables()
+	// if err != nil {
+	// 	*logMsg = "unable to setup tables"
+	// 	log.Println("[ERROR]: unable to setup tables : " + err.Error())
+	// 	return err
+	// }
+
+	// Mapping to batch measurements according to epoch time
+	err := r.AddMeasurements(msg)
 	if err != nil {
 		return err
 	}
 
-	err = r.AddMeasurements(msg)
-	if err != nil {
-		return err
+	log.Println("[INFO]: Inserted entry into database")
+	log.Println("[INFO]: Adding to batch")
+
+	epochTime := msg.Data[0]["epoch_ts"]
+
+	if epochTime == nil {
+		*logMsg = "epoch time not present! assigning one ourselves"
+		epochTimeStr := strconv.FormatInt(time.Now().Unix(), 10)
+		epochTime = epochTimeStr
+	} else {
+		epochTime = epochTime.(string)
 	}
 
-	final_msg, err := r.PreparePrompt(msg.DBName, msg.MetricName)
-	if err != nil {
-		return err
-	}
+	// Append msg to the appropriate key in MsmtBatch
+	r.MsmtBatch[epochTime.(string)] = append(r.MsmtBatch[epochTime.(string)], msg)
 
-	log.Println(final_msg)
-
-	model := "tinyllama"
-	model_response := ""
-	// Callback function to handle the response
-	callback := func(cr string, err error) {
-		if err != nil {
-			fmt.Println(err)
-
-			return
+	// Process metrics if batch size acheived
+	if len(r.MsmtBatch[epochTime.(string)]) == r.BatchSize {
+		// Generate insights for measurements of batch set
+		for _, v := range r.MsmtBatch {
+			for _, val := range v {
+				go func(val *api.MeasurementEnvelope) {
+					r.mu.Lock()
+					defer r.mu.Unlock()
+					r.GenerateInsights(*val)
+				}(val)
+			}
 		}
 
-		var response talkative.ChatResponse
-
-		if err := json.Unmarshal([]byte(cr), &response); err != nil {
-			fmt.Println(err)
-
-			return
+		// Delete all entries
+		r.mu.Lock()
+		log.Println("[INFO] : Removing old entries.....")
+		for k := range r.MsmtBatch {
+			delete(r.MsmtBatch, k)
 		}
-
-		model_response += response.Message.Content
-	}
-
-	var params *talkative.ChatParams = nil
-
-	log.Println(final_msg)
-
-	// The chat message to send
-	message := talkative.ChatMessage{
-		Role:    talkative.USER, // Initiate the chat as a user
-		Content: final_msg,
-	}
-
-	done, err := r.Client.PlainChat(model, callback, params, message)
-
-	if err != nil {
-		panic(err)
-	}
-
-	<-done // wait for the chat to complete
-	log.Println(model_response)
-	id := r.GetDbID(msg.DBName)
-	if id == -1 {
-		return errors.New("unable to find database in records")
-	}
-
-	err = r.AddInsights(id, model_response)
-	if err != nil {
-		return err
+		log.Println("[INFO]: Removed entries successfully!")
+		r.mu.Unlock()
 	}
 
 	return nil

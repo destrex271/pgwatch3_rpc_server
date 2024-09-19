@@ -124,7 +124,7 @@ func TestNewLlamaReceiver(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx)
+	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx, 10)
 
 	assert.NotNil(t, recv, "Receiver object is nil")
 	assert.Nil(t, err, "Error encountered while creating receiver")
@@ -165,7 +165,7 @@ func TestSetupTables(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx)
+	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx, 10)
 
 	assert.NotNil(t, recv, "Receiver object is nil")
 	assert.Nil(t, err, "Error encountered while creating receiver")
@@ -238,7 +238,7 @@ func TestUpdateMeasurements_VALID(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx)
+	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx, 10)
 
 	assert.NotNil(t, recv, "Receiver object is nil")
 	assert.Nil(t, err, "Error encountered while creating receiver")
@@ -302,7 +302,7 @@ func TestUpdateMeasurements_VALID_Multiple(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx)
+	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx, 10)
 
 	assert.NotNil(t, recv, "Receiver object is nil")
 	assert.Nil(t, err, "Error encountered while creating receiver")
@@ -369,7 +369,7 @@ func TestUpdateMeasurements_EMPTYDB(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx)
+	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx, 10)
 
 	assert.NotNil(t, recv, "Receiver object is nil")
 	assert.Nil(t, err, "Error encountered while creating receiver")
@@ -419,7 +419,7 @@ func TestUpdateMeasurements_EMPTY_METRICNAME(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx)
+	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx, 10)
 
 	assert.NotNil(t, recv, "Receiver object is nil")
 	assert.Nil(t, err, "Error encountered while creating receiver")
@@ -469,7 +469,7 @@ func TestUpdateMeasurements_EMPTY_DATA(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx)
+	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx, 10)
 
 	assert.NotNil(t, recv, "Receiver object is nil")
 	assert.Nil(t, err, "Error encountered while creating receiver")
