@@ -302,7 +302,7 @@ func TestUpdateMeasurements_VALID_Multiple(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx, 10)
+	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx, 4)
 
 	assert.NotNil(t, recv, "Receiver object is nil")
 	assert.Nil(t, err, "Error encountered while creating receiver")
