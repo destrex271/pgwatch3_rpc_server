@@ -18,5 +18,7 @@ go run ./cmd/csv_receiver --port=<port_number_for_sink> --rootFolder=<location_o
 The CSV files will be stored in the following structure:
 
 Database Folder
+
   ├── Metric1.csv
+  
   └── Metric2.csv
