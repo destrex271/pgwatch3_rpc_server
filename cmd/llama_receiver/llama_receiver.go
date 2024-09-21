@@ -23,7 +23,7 @@ You are an expert in analyzing PostgreSQL database metrics. I will provide you w
 The metrics are:  
 {DATA}  
 
-Please deliver a comprehensive report with your insights and suggestions based on the provided measurements.
+Please deliver a concise report with your insights and suggestions based on the provided measurements. Try to provide your response in bullet points.
 `
 
 type Batch map[string][]*api.MeasurementEnvelope
