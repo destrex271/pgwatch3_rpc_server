@@ -170,13 +170,20 @@ func TestSetupTables(t *testing.T) {
 	assert.NotNil(t, recv, "Receiver object is nil")
 	assert.Nil(t, err, "Error encountered while creating receiver")
 
+	// obtain db conneciton
+	conn, err := recv.ConnPool.Acquire(recv.Ctx)
+
+	assert.Nil(t, err, "error encountered while acquiring new connection")
+	assert.NotNil(t, conn, "connection obtained in nil")
+	defer conn.Release()
+
 	// Call setup tables function
 	err = recv.SetupTables()
 	assert.Nil(t, err, "error encountered while setting up tables")
 
 	// Check postgres for DB table
 	var doesExist bool
-	err = recv.DbConn.QueryRow(recv.Ctx, `SELECT EXISTS (
+	err = conn.QueryRow(recv.Ctx, `SELECT EXISTS (
 		SELECT FROM information_schema.tables 
 		WHERE  table_name   = 'db'
     );`).Scan(&doesExist)
@@ -185,7 +192,7 @@ func TestSetupTables(t *testing.T) {
 	assert.True(t, doesExist, "table DB does not exist")
 
 	// Check postgres for Measurement table
-	err = recv.DbConn.QueryRow(recv.Ctx, `SELECT EXISTS (
+	err = conn.QueryRow(recv.Ctx, `SELECT EXISTS (
 		SELECT FROM information_schema.tables 
 		WHERE  table_name   = 'measurement'
     );`).Scan(&doesExist)
@@ -194,7 +201,7 @@ func TestSetupTables(t *testing.T) {
 	assert.True(t, doesExist, "table Measurement does not exist")
 
 	// Check postgres for Insights
-	err = recv.DbConn.QueryRow(recv.Ctx, `SELECT EXISTS (
+	err = conn.QueryRow(recv.Ctx, `SELECT EXISTS (
 		SELECT FROM information_schema.tables 
 		WHERE  table_name   = 'insights'
     );`).Scan(&doesExist)
@@ -243,6 +250,13 @@ func TestUpdateMeasurements_VALID(t *testing.T) {
 	assert.NotNil(t, recv, "Receiver object is nil")
 	assert.Nil(t, err, "Error encountered while creating receiver")
 
+	// obtain db conneciton
+	conn, err := recv.ConnPool.Acquire(recv.Ctx)
+
+	assert.Nil(t, err, "error encountered while acquiring new connection")
+	assert.NotNil(t, conn, "connection obtained in nil")
+	defer conn.Release()
+
 	// Get current number of insights in database
 	if err != nil {
 		t.Fatal(err)
@@ -259,7 +273,7 @@ func TestUpdateMeasurements_VALID(t *testing.T) {
 	// Check insights table for new entry
 	newInsightsCount := 0
 	time.Sleep(60 * time.Second)
-	err = recv.DbConn.QueryRow(recv.Ctx, "select count(*) from insights;").Scan(&newInsightsCount)
+	err = conn.QueryRow(recv.Ctx, "select count(*) from insights;").Scan(&newInsightsCount)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -308,6 +322,13 @@ func TestUpdateMeasurements_VALID_Multiple(t *testing.T) {
 	assert.NotNil(t, recv, "Receiver object is nil")
 	assert.Nil(t, err, "Error encountered while creating receiver")
 
+	// obtain db conneciton
+	conn, err := recv.ConnPool.Acquire(recv.Ctx)
+
+	assert.Nil(t, err, "error encountered while acquiring new connection")
+	assert.NotNil(t, conn, "connection obtained in nil")
+	defer conn.Release()
+
 	// Get current number of insights in database
 	if err != nil {
 		t.Fatal(err)
@@ -327,7 +348,7 @@ func TestUpdateMeasurements_VALID_Multiple(t *testing.T) {
 	t.Log("waiting.....")
 	time.Sleep(60 * time.Second) // Wait for 7 seconds to allow llm to generate stuff
 	t.Log("waiting done")
-	err = recv.DbConn.QueryRow(recv.Ctx, "select count(*) from insights;").Scan(&newInsightsCount)
+	err = conn.QueryRow(recv.Ctx, "select count(*) from insights;").Scan(&newInsightsCount)
 	if err != nil {
 		t.Fatal(err)
 	}

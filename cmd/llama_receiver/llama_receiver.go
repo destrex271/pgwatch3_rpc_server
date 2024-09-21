@@ -13,17 +13,27 @@ import (
 
 	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rifaideen/talkative"
 )
 
 const contextString = `
-You are an expert in analyzing PostgreSQL database metrics. I will provide you with a set of measurements for a specific database metric. Based on this data, I need you to derive actionable insights and recommendations. Please focus solely on your observations and analysis, without detailing any methods.
+You are a PostgreSQL database metrics analyzer. Examine the following JSON data containing measurements for various Postgres database metrics:
 
-The metrics are:  
-{DATA}  
+{DATA}
 
-Please deliver a concise report with your insights and suggestions based on the provided measurements. Try to provide your response in bullet points.
+Provide a concise analysis of these metrics, focusing on:
+- Key performance indicators
+- Anomalies or concerning trends
+- Resource utilization patterns
+- Potential bottlenecks or issues
+
+Based on your analysis, offer:
+- 2-3 actionable recommendations to improve database performance
+
+Present your insights and recommendations in bullet points, prioritizing the most important findings.
+Be concise in your output. Your ourput should not exceed 200 words.
+Do not reprint the input measurements provided to you, just give the insights.
 `
 
 type Batch map[string][]*api.MeasurementEnvelope
@@ -33,11 +43,11 @@ type LlamaReceiver struct {
 	Context   string
 	Ctx       context.Context
 	ServerURI string
-	DbConn    *pgx.Conn
-	AltDbConn *pgx.Conn
+	ConnPool  *pgxpool.Pool
 	MsmtBatch Batch
 	BatchSize int
 	mu        sync.Mutex
+	MsCount   int
 	sinks.SyncMetricHandler
 }
 
@@ -54,16 +64,21 @@ func NewLlamaReceiver(llmServerURI string, pgURI string, ctx context.Context, ba
 		return nil, err
 	}
 
-	conn, err := pgx.Connect(ctx, pgURI)
+	// To use in insight generation to avoid any stuff
+	pgxpool_config, err := pgxpool.ParseConfig(pgURI)
 	if err != nil {
-		log.Println("[ERROR]: unable to connect to postgres instance")
+		log.Println("[ERROR]: unable to create pgx pool config")
 		return nil, err
 	}
 
-	// To use in insight generation to avoid any stuff
-	altConn, err := pgx.Connect(ctx, pgURI)
+	pgxpool_config.MaxConns = 25
+	pgxpool_config.MaxConnLifetime = 5 * time.Minute
+	pgxpool_config.MaxConnIdleTime = 15 * time.Minute
+
+	pool, err := pgxpool.NewWithConfig(ctx, pgxpool_config)
 	if err != nil {
-		log.Println("[ERROR]: unable to obtain additional connectionj")
+		log.Println("[ERROR]: Unable to intialize conneciton pool.")
+		return nil, err
 	}
 
 	recv = &LlamaReceiver{
@@ -71,11 +86,11 @@ func NewLlamaReceiver(llmServerURI string, pgURI string, ctx context.Context, ba
 		Context:           contextString,
 		Ctx:               ctx,
 		ServerURI:         llmServerURI,
-		DbConn:            conn,
-		AltDbConn:         altConn,
+		ConnPool:          pool,
 		MsmtBatch:         make(Batch),
 		BatchSize:         batchSize,
 		SyncMetricHandler: sinks.NewSyncMetricHandler(1024),
+		MsCount:           0,
 	}
 
 	err = recv.SetupTables()
@@ -92,22 +107,36 @@ func NewLlamaReceiver(llmServerURI string, pgURI string, ctx context.Context, ba
 func (r *LlamaReceiver) HandleSyncMetric() {
 	req := <-r.SyncChannel
 
+	// Acquire connetion
+	conn, err := r.ConnPool.Acquire(r.Ctx)
+	if err != nil {
+		log.Println("[ERROR]: Unable to acquire connection")
+		return
+	}
+	defer conn.Release()
+
 	switch req.Operation {
 	case "Add":
-		r.AltDbConn.Exec(r.Ctx, `INSERT INTO Db(dbname) VALUES($1)`, req.DbName)
+		conn.Exec(r.Ctx, `INSERT INTO Db(dbname) VALUES($1)`, req.DbName)
 	case "DELETE":
-		r.AltDbConn.Exec(r.Ctx, `DELETE FROM Db WHERE dbanme=$1 CASCADE;`, req.DbName)
+		conn.Exec(r.Ctx, `DELETE FROM Db WHERE dbanme=$1 CASCADE;`, req.DbName)
 	}
 }
 
 func (r *LlamaReceiver) SetupTables() error {
-	_, err := r.DbConn.Exec(r.Ctx, `CREATE TABLE IF NOT EXISTS db(id bigserial PRIMARY KEY, dbname TEXT)`)
+	conn, err := r.ConnPool.Acquire(r.Ctx)
+	if err != nil {
+		return errors.New("unable to acquire new connection")
+	}
+	defer conn.Release()
+
+	_, err = conn.Exec(r.Ctx, `CREATE TABLE IF NOT EXISTS db(id bigserial PRIMARY KEY, dbname TEXT)`)
 	if err != nil {
 		log.Println("[ERROR]: unable to create Db table : " + err.Error())
 		return err
 	}
 
-	_, err = r.DbConn.Exec(r.Ctx, `CREATE TABLE IF NOT EXISTS Measurement (
+	_, err = conn.Exec(r.Ctx, `CREATE TABLE IF NOT EXISTS Measurement (
 		created_time TIMESTAMP NOT NULL DEFAULT(NOW() AT TIME ZONE 'UTC'),
 		data JSONB,
 		metric_name TEXT,
@@ -119,7 +148,7 @@ func (r *LlamaReceiver) SetupTables() error {
 		return err
 	}
 
-	_, err = r.DbConn.Exec(r.Ctx, `CREATE TABLE IF NOT EXISTS Insights(
+	_, err = conn.Exec(r.Ctx, `CREATE TABLE IF NOT EXISTS Insights(
 		insight_data TEXT, 
 		database_id BIGSERIAL, 
 		created_time TIMESTAMP NOT NULL DEFAULT(NOW() AT TIME ZONE 'UTC'),
@@ -134,21 +163,28 @@ func (r *LlamaReceiver) SetupTables() error {
 }
 
 func (r *LlamaReceiver) AddMeasurements(msg *api.MeasurementEnvelope) error {
+
+	conn, err := r.ConnPool.Acquire(r.Ctx)
+	if err != nil {
+		return errors.New("unable to acquire new connection")
+	}
+	defer conn.Release()
+
 	var id int
 	// Try to fecth id
-	err := r.DbConn.QueryRow(r.Ctx, `SELECT id FROM Db WHERE dbname='`+msg.DBName+`'`).Scan(&id)
+	err = conn.QueryRow(r.Ctx, `SELECT id FROM Db WHERE dbname='`+msg.DBName+`'`).Scan(&id)
 	if err != nil {
 		if err.Error() != "no rows in result set" {
 			return err
 		}
 		// if not found, add database to table
-		_, err := r.DbConn.Exec(r.Ctx, `INSERT INTO Db(dbname) VALUES('`+msg.DBName+`')`)
+		_, err := conn.Exec(r.Ctx, `INSERT INTO Db(dbname) VALUES('`+msg.DBName+`')`)
 		if err != nil {
 			return err
 		}
 
 		// Get new id
-		err = r.DbConn.QueryRow(r.Ctx, `SELECT id FROM Db WHERE dbname='`+msg.DBName+`'`).Scan(&id)
+		err = conn.QueryRow(r.Ctx, `SELECT id FROM Db WHERE dbname='`+msg.DBName+`'`).Scan(&id)
 		if err != nil {
 			return err
 		}
@@ -161,7 +197,7 @@ func (r *LlamaReceiver) AddMeasurements(msg *api.MeasurementEnvelope) error {
 	}
 
 	// insert measurements with current timestamp(default) into table Measurement
-	_, err = r.DbConn.Exec(r.Ctx, fmt.Sprintf(`INSERT INTO Measurement(data, database_id, metric_name) VALUES('%s', %d, '%s')`, string(jsonData), id, msg.MetricName))
+	_, err = conn.Exec(r.Ctx, fmt.Sprintf(`INSERT INTO Measurement(data, database_id, metric_name) VALUES('%s', %d, '%s')`, string(jsonData), id, msg.MetricName))
 	if err != nil {
 		return err
 	}
@@ -170,8 +206,14 @@ func (r *LlamaReceiver) AddMeasurements(msg *api.MeasurementEnvelope) error {
 }
 
 func (r *LlamaReceiver) GetAllMeasurements(dbname string, metric_name string, context_size uint) ([]MeasurementsData, error) {
+	conn, err := r.ConnPool.Acquire(r.Ctx)
+	if err != nil {
+		return nil, errors.New("unable to acquire new connection")
+	}
+	defer conn.Release()
+
 	query := fmt.Sprintf("SELECT database_id, metric_name, data FROM Measurement INNER JOIN Db ON Measurement.database_id = Db.id WHERE Db.dbname = '%s' ORDER BY created_time DESC LIMIT %d", dbname, context_size)
-	rows, err := r.DbConn.Query(r.Ctx, query)
+	rows, err := conn.Query(r.Ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -207,10 +249,17 @@ func (r *LlamaReceiver) PreparePrompt(dbname string, metric_name string) (string
 }
 
 func (r *LlamaReceiver) GetDbID(dbname string) int {
+	conn, err := r.ConnPool.Acquire(r.Ctx)
+	if err != nil {
+		log.Println("[ERROR]: unable to acquire new connection")
+		return -1
+	}
+	defer conn.Release()
+
 	// Get id of database with name = dbname
 	id := 0
 	query := fmt.Sprintf(`SELECT id FROM Db where dbname='%s'`, dbname)
-	err := r.DbConn.QueryRow(r.Ctx, query).Scan(&id)
+	err = conn.QueryRow(r.Ctx, query).Scan(&id)
 	if err != nil {
 		return -1
 	}
@@ -218,11 +267,17 @@ func (r *LlamaReceiver) GetDbID(dbname string) int {
 }
 
 func (r *LlamaReceiver) AddInsights(dbid int, insights string) error {
+	conn, err := r.ConnPool.Acquire(r.Ctx)
+	if err != nil {
+		return errors.New("unable to acquire new connection")
+	}
+	defer conn.Release()
+
 	// Insert model response in table insights
 	query := `INSERT INTO Insights(database_id, insight_data) VALUES($1, $2)`
 
 	// Execute the query with parameters
-	_, err := r.AltDbConn.Exec(r.Ctx, query, dbid, insights)
+	_, err = conn.Exec(r.Ctx, query, dbid, insights)
 	if err != nil {
 		return fmt.Errorf("failed to execute query: %w", err)
 	}
@@ -254,6 +309,7 @@ func (r *LlamaReceiver) GenerateInsights(msg api.MeasurementEnvelope) error {
 		}
 
 		model_response += response.Message.Content
+		log.Println(model_response)
 	}
 
 	var params *talkative.ChatParams = nil
@@ -313,21 +369,22 @@ func (r *LlamaReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg 
 	log.Println("[INFO]: Inserted entry into database")
 	log.Println("[INFO]: Adding to batch")
 
-	epochTime := msg.Data[0]["epoch_ts"]
+	epochTime := msg.Data[0]["epoch_ns"]
 
 	if epochTime == nil {
 		*logMsg = "epoch time not present! assigning one ourselves"
 		epochTimeStr := strconv.FormatInt(time.Now().Unix(), 10)
 		epochTime = epochTimeStr
 	} else {
-		epochTime = epochTime.(string)
+		epochTime = strconv.FormatInt(epochTime.(int64), 10)
 	}
 
 	// Append msg to the appropriate key in MsmtBatch
 	r.MsmtBatch[epochTime.(string)] = append(r.MsmtBatch[epochTime.(string)], msg)
+	r.MsCount += 1
 
 	// Process metrics if batch size acheived
-	if len(r.MsmtBatch[epochTime.(string)]) == r.BatchSize {
+	if r.MsCount == r.BatchSize {
 		// Generate insights for measurements of batch set
 		for _, v := range r.MsmtBatch {
 			for _, val := range v {
@@ -347,6 +404,8 @@ func (r *LlamaReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg 
 		}
 		log.Println("[INFO]: Removed entries successfully!")
 		r.mu.Unlock()
+
+		r.MsCount = 0
 	}
 
 	return nil
