@@ -84,7 +84,20 @@ func NewLlamaReceiver(llmServerURI string, pgURI string, ctx context.Context, ba
 		return nil, err
 	}
 
+	go recv.HandleSyncMetric()
+
 	return recv, nil
+}
+
+func (r *LlamaReceiver) HandleSyncMetric() {
+	req := <-r.SyncChannel
+
+	switch req.Operation {
+	case "Add":
+		r.AltDbConn.Exec(r.Ctx, `INSERT INTO Db(dbname) VALUES($1)`, req.DbName)
+	case "DELETE":
+		r.AltDbConn.Exec(r.Ctx, `DELETE FROM Db WHERE dbanme=$1 CASCADE;`, req.DbName)
+	}
 }
 
 func (r *LlamaReceiver) SetupTables() error {
