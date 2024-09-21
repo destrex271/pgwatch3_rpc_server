@@ -18,6 +18,7 @@ type KafkaProdReceiver struct {
 	sinks.SyncMetricHandler
 }
 
+// Handle Sync Metric Instructions
 func (r *KafkaProdReceiver) HandleSyncMetric() {
 	req := <-r.SyncChannel
 	switch req.Operation {

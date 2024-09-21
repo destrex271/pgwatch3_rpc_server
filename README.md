@@ -10,12 +10,6 @@ Checkout <a href="https://github.com/cybertec-postgresql/pgwatch">PgWatch</a> to
 
 ## Running custom Sinks
 
-Open the project in two terminals.
-
-In the first terminal start the server i.e. in the folder pgwatch3_rpc_server/src
-Currently we are using a demo text receiver by default which will store the measurements in a text file.
-Later on we'll add command line arguments to specify the sink type.
-
 To start the any of the given receivers you can use:
 
 ```bash
@@ -25,6 +19,13 @@ go run ./cmd/parquet_receiver --port=<port_number_for_sink> --rootFolder=<locati
 # Kafka Receiver
 go run ./cmd/kafka_prod_receiver --port=<port_number_for_sink> --kafkaHost=<host_address_of_kafka> --autoadd=<true/false>
 ```
+
+Now once your receiver is up you can setup pgwatch as follows:
+```bash
+go run ./cmd/pgwatch --sources=<postgres://postgres@localhost:5432/postgres> --sink=rpc://<ip/hostname_of_your_sink>:<port_where_recv_is_listening>
+```
+
+Viola! You havea  seemless integration between pgwatch and your custom sink. Try out our various implementations to get a feel of how these receivers feel with your custom pgwatch instances.
 
 ## Developing custom sinks
 
