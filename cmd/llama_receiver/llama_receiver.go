@@ -33,7 +33,6 @@ Based on your analysis, offer:
 
 Present your insights and recommendations in bullet points, prioritizing the most important findings.
 Be concise in your output. Your ourput should not exceed 200 words.
-Do not reprint the input measurements provided to you, just give the insights.
 `
 
 type Batch map[string][]*api.MeasurementEnvelope
