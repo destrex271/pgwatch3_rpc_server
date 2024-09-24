@@ -1,9 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
+	"strconv"
+	"time"
 
 	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
@@ -11,14 +15,16 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
 )
 
 type S3Receiver struct {
-	S3Client *s3.Client
-	Ctx      context.Context
+	S3Client  *s3.Client
+	S3Manager *manager.Uploader
+	Ctx       context.Context
 	sinks.SyncMetricHandler
 }
 
@@ -57,7 +63,7 @@ func (r *S3Receiver) AddDatabase(dbname string) error {
 	return nil
 }
 
-func (r *S3Receiver) BucketExists(bucketName string) (bool, error) {
+func (r *S3Receiver) DBExists(bucketName string) (bool, error) {
 	_, err := r.S3Client.HeadBucket(context.TODO(), &s3.HeadBucketInput{
 		Bucket: aws.String(bucketName),
 	})
@@ -83,6 +89,57 @@ func (r *S3Receiver) BucketExists(bucketName string) (bool, error) {
 }
 
 func (r *S3Receiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
+
+	if len(msg.DBName) == 0 {
+		return errors.New("empty database name")
+	}
+
+	if len(msg.MetricName) == 0 {
+		return errors.New("empty metric name")
+	}
+
+	if len(msg.Data) == 0 {
+		return errors.New("empty data")
+	}
+
+	exists, err := r.DBExists(msg.DBName)
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		err = r.AddDatabase(msg.DBName)
+		return err
+	}
+
+	for _, data := range msg.Data {
+		// Json data
+		jsonData, err := json.Marshal(data)
+		if err != nil {
+			return err
+		}
+
+		// Get buffer
+		buffer := bytes.NewReader(jsonData)
+		var partMiBs int64 = 10
+
+		// Setup uploader
+		uploader := manager.NewUploader(r.S3Client, func(u *manager.Uploader) {
+			u.PartSize = partMiBs * 1024 * 1024
+		})
+
+		objectKey := msg.DBName + "_" + strconv.FormatInt(time.Now().UTC().Unix(), 10)
+
+		// Upload data
+		_, err = uploader.Upload(context.TODO(), &s3.PutObjectInput{
+			Bucket: aws.String(msg.DBName),
+			Key:    aws.String(objectKey),
+			Body:   buffer,
+		})
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
