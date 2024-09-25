@@ -7,6 +7,7 @@ require (
 	github.com/parquet-go/parquet-go v0.23.0
 	github.com/segmentio/kafka-go v0.4.47
 	github.com/stretchr/testify v1.9.0
+	github.com/testcontainers/testcontainers-go v0.33.0
 )
 
 require (
@@ -89,8 +90,10 @@ require (
 	github.com/shirou/gopsutil/v3 v3.24.5 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
+
 	github.com/testcontainers/testcontainers-go v0.33.0 // indirect
 	github.com/testcontainers/testcontainers-go/modules/localstack v0.33.0 // indirect
+
 	github.com/tklauser/go-sysconf v0.3.14 // indirect
 	github.com/tklauser/numcpus v0.8.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
@@ -98,9 +101,17 @@ require (
 	go.etcd.io/etcd/client/pkg/v3 v3.5.15 // indirect
 	go.etcd.io/etcd/client/v3 v3.5.15 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.53.0 // indirect
+
 	go.opentelemetry.io/otel v1.28.0 // indirect
 	go.opentelemetry.io/otel/metric v1.28.0 // indirect
 	go.opentelemetry.io/otel/trace v1.28.0 // indirect
+
+	go.opentelemetry.io/otel v1.29.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.29.0 // indirect
+	go.opentelemetry.io/otel/metric v1.29.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.29.0 // indirect
+	go.opentelemetry.io/otel/trace v1.29.0 // indirect
+	go.opentelemetry.io/proto/otlp v1.3.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.26.0 // indirect

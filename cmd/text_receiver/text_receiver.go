@@ -19,7 +19,7 @@ type TextReceiver struct {
 func (r TextReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
 
 	// Write Metrics in a text file
-	fileName := fmt.Sprint(msg.CustomTags["pgwatchId"]) + ".txt"
+	fileName := msg.DBName + ".txt"
 	file, err := os.OpenFile(r.FullPath+"/"+fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 
 	if err != nil {
