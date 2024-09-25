@@ -116,9 +116,9 @@ func (r *LlamaReceiver) HandleSyncMetric() {
 
 	switch req.Operation {
 	case "Add":
-		conn.Exec(r.Ctx, `INSERT INTO Db(dbname) VALUES($1)`, req.DbName)
+		conn.Exec(r.Ctx, `INSERT INTO db(dbname) VALUES($1)`, req.DbName)
 	case "DELETE":
-		conn.Exec(r.Ctx, `DELETE FROM Db WHERE dbanme=$1 CASCADE;`, req.DbName)
+		conn.Exec(r.Ctx, `DELETE FROM db WHERE dbanme=$1 CASCADE;`, req.DbName)
 	}
 }
 
@@ -129,29 +129,29 @@ func (r *LlamaReceiver) SetupTables() error {
 	}
 	defer conn.Release()
 
-	_, err = conn.Exec(r.Ctx, `CREATE TABLE IF NOT EXISTS db(id bigserial PRIMARY KEY, dbname TEXT)`)
+	_, err = conn.Exec(r.Ctx, `CREATE TABLE IF NOT EXISTS db(id BIGSERIAL PRIMARY KEY, dbname TEXT)`)
 	if err != nil {
-		log.Println("[ERROR]: unable to create Db table : " + err.Error())
+		log.Println("[ERROR]: unable to create db table : " + err.Error())
 		return err
 	}
 
-	_, err = conn.Exec(r.Ctx, `CREATE TABLE IF NOT EXISTS Measurement (
+	_, err = conn.Exec(r.Ctx, `CREATE TABLE IF NOT EXISTS measurement (
 		created_time TIMESTAMP NOT NULL DEFAULT(NOW() AT TIME ZONE 'UTC'),
 		data JSONB,
 		metric_name TEXT,
 		database_id SERIAL,
-		FOREIGN KEY (database_id) REFERENCES Db(id)
+		FOREIGN KEY (database_id) REFERENCES db(id)
 	);`)
 	if err != nil {
 		log.Println("[ERROR]: unable to create Measurement table : " + err.Error())
 		return err
 	}
 
-	_, err = conn.Exec(r.Ctx, `CREATE TABLE IF NOT EXISTS Insights(
+	_, err = conn.Exec(r.Ctx, `CREATE TABLE IF NOT EXISTS insights(
 		insight_data TEXT, 
 		database_id BIGSERIAL, 
 		created_time TIMESTAMP NOT NULL DEFAULT(NOW() AT TIME ZONE 'UTC'),
-		FOREIGN KEY (database_id) REFERENCES Db(id) 
+		FOREIGN KEY (database_id) REFERENCES db(id) 
 	)`)
 	if err != nil {
 		log.Println("[ERROR]: unable to create Insigths table : " + err.Error())
@@ -171,19 +171,19 @@ func (r *LlamaReceiver) AddMeasurements(msg *api.MeasurementEnvelope) error {
 
 	var id int
 	// Try to fecth id
-	err = conn.QueryRow(r.Ctx, `SELECT id FROM Db WHERE dbname='`+msg.DBName+`'`).Scan(&id)
+	err = conn.QueryRow(r.Ctx, `SELECT id FROM db WHERE dbname=$1`, msg.DBName).Scan(&id)
 	if err != nil {
 		if err.Error() != "no rows in result set" {
 			return err
 		}
 		// if not found, add database to table
-		_, err := conn.Exec(r.Ctx, `INSERT INTO Db(dbname) VALUES('`+msg.DBName+`')`)
+		_, err := conn.Exec(r.Ctx, `INSERT INTO db(dbname) VALUES($1)`, msg.DBName)
 		if err != nil {
 			return err
 		}
 
 		// Get new id
-		err = conn.QueryRow(r.Ctx, `SELECT id FROM Db WHERE dbname='`+msg.DBName+`'`).Scan(&id)
+		err = conn.QueryRow(r.Ctx, `SELECT id FROM db WHERE dbname=$1`, msg.DBName).Scan(&id)
 		if err != nil {
 			return err
 		}
@@ -196,7 +196,7 @@ func (r *LlamaReceiver) AddMeasurements(msg *api.MeasurementEnvelope) error {
 	}
 
 	// insert measurements with current timestamp(default) into table Measurement
-	_, err = conn.Exec(r.Ctx, fmt.Sprintf(`INSERT INTO Measurement(data, database_id, metric_name) VALUES('%s', %d, '%s')`, string(jsonData), id, msg.MetricName))
+	_, err = conn.Exec(r.Ctx, `INSERT INTO measurement(data, database_id, metric_name) VALUES($1, $2, $3)`, string(jsonData), id, msg.MetricName)
 	if err != nil {
 		return err
 	}
@@ -211,8 +211,8 @@ func (r *LlamaReceiver) GetAllMeasurements(dbname string, metric_name string, co
 	}
 	defer conn.Release()
 
-	query := fmt.Sprintf("SELECT database_id, metric_name, data FROM Measurement INNER JOIN Db ON Measurement.database_id = Db.id WHERE Db.dbname = '%s' ORDER BY created_time DESC LIMIT %d", dbname, context_size)
-	rows, err := conn.Query(r.Ctx, query)
+	query := "SELECT database_id, metric_name, data FROM measurement INNER JOIN db ON measurement.database_id = db.id WHERE db.dbname = $1 ORDER BY created_time DESC LIMIT $2"
+	rows, err := conn.Query(r.Ctx, query, dbname, context_size)
 	if err != nil {
 		return nil, err
 	}
@@ -257,8 +257,8 @@ func (r *LlamaReceiver) GetDbID(dbname string) int {
 
 	// Get id of database with name = dbname
 	id := 0
-	query := fmt.Sprintf(`SELECT id FROM Db where dbname='%s'`, dbname)
-	err = conn.QueryRow(r.Ctx, query).Scan(&id)
+	query := `SELECT id FROM db where dbname=$1`
+	err = conn.QueryRow(r.Ctx, query, dbname).Scan(&id)
 	if err != nil {
 		return -1
 	}
@@ -273,7 +273,7 @@ func (r *LlamaReceiver) AddInsights(dbid int, insights string) error {
 	defer conn.Release()
 
 	// Insert model response in table insights
-	query := `INSERT INTO Insights(database_id, insight_data) VALUES($1, $2)`
+	query := `INSERT INTO insights(database_id, insight_data) VALUES($1, $2)`
 
 	// Execute the query with parameters
 	_, err = conn.Exec(r.Ctx, query, dbid, insights)
