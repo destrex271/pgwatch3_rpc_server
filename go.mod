@@ -96,7 +96,6 @@ require (
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/testcontainers/testcontainers-go/modules/ollama v0.33.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.33.0
-	github.com/testcontainers/testcontainers-go/modules/localstack v0.33.0
 	github.com/tklauser/go-sysconf v0.3.14 // indirect
 	github.com/tklauser/numcpus v0.8.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
@@ -113,7 +112,6 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.26.0 // indirect
-	golang.org/x/mod v0.17.0 // indirect
 	golang.org/x/net v0.28.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.24.0 // indirect
