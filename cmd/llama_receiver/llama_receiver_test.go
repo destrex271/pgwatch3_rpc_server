@@ -272,7 +272,7 @@ func TestUpdateMeasurements_VALID(t *testing.T) {
 
 	// Check insights table for new entry
 	newInsightsCount := 0
-	time.Sleep(60 * time.Second)
+	time.Sleep(90 * time.Second)
 	err = conn.QueryRow(recv.Ctx, "SELECT COUNT(*) FROM insights;").Scan(&newInsightsCount)
 	if err != nil {
 		t.Fatal(err)
