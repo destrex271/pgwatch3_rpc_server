@@ -15,7 +15,6 @@ func main() {
 	// Important Flags
 	// receiverType := flag.String("type", "", "The type of sink that you want to keep this node as.\nAvailable options:\n\t- csv\n\t- text\n\t- parquet")
 	port := flag.String("port", "-1", "Specify the port where you want you sink to receive the measaurements on.")
-	StorageFolder := flag.String("rootFolder", ".", "Only for formats like CSV...\n")
 	flag.Parse()
 
 	if *port == "-1" {
@@ -24,7 +23,7 @@ func main() {
 	}
 
 	var server sinks.Receiver
-	server = &ParqReceiver{FullPath: *StorageFolder, SyncMetricHandler: sinks.NewSyncMetricHandler(1024)}
+	server = &S3Receiver{SyncMetricHandler: sinks.NewSyncMetricHandler(1024)}
 
 	rpc.RegisterName("Receiver", server) // Primary Receiver
 	log.Println("[INFO]: Registered Receiver")
