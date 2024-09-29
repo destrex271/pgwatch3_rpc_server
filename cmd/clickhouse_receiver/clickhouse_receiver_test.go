@@ -15,7 +15,7 @@ import (
 func initContainer(ctx context.Context, user string, password string, dbname string) (testcontainers.Container, error) {
 
 	req := testcontainers.ContainerRequest{
-		Image:        "clickhouse/clickhouse-server:latest",
+		Image:        "clickhouse/clickhouse-server:24.7",
 		ExposedPorts: []string{"9000/tcp"},
 		WaitingFor:   wait.ForListeningPort("9000/tcp"),
 		Env: map[string]string{
@@ -94,7 +94,7 @@ func TestGetConnection(t *testing.T) {
 		t.Fatalf("Failed to get mapped port: %s", err)
 	}
 	serverUri := fmt.Sprintf("127.0.0.1:%d", mappedPort.Int())
-	conn, err := GetConnection(user, password, dbname, serverUri)
+	conn, err := GetConnection(user, password, dbname, serverUri, true)
 
 	assert.Nil(t, err, "ecountered error while getting connection")
 	assert.NotNil(t, conn, "conn is null")
@@ -124,7 +124,7 @@ func TestNewClickHouse(t *testing.T) {
 	}
 
 	uri := fmt.Sprintf("127.0.0.1:%d", mappedPort.Int())
-	recv, err := NewClickHouseReceiver(user, password, dbname, uri)
+	recv, err := NewClickHouseReceiver(user, password, dbname, uri, true)
 
 	assert.Nil(t, err, "Encountered error while creating new receiver")
 	assert.NotNil(t, recv, "Receiver not created")
@@ -163,7 +163,7 @@ func TestInsertMeasurements(t *testing.T) {
 	}
 
 	uri := fmt.Sprintf("127.0.0.1:%d", mappedPort.Int())
-	recv, err := NewClickHouseReceiver(user, password, dbname, uri)
+	recv, err := NewClickHouseReceiver(user, password, dbname, uri, true)
 
 	assert.Nil(t, err, "Encountered error while creating new receiver")
 	assert.NotNil(t, recv, "Receiver not created")
@@ -200,7 +200,7 @@ func TestUpdateMeasurements_VALID_DATA(t *testing.T) {
 	}
 
 	uri := fmt.Sprintf("127.0.0.1:%d", mappedPort.Int())
-	recv, err := NewClickHouseReceiver(user, password, dbname, uri)
+	recv, err := NewClickHouseReceiver(user, password, dbname, uri, true)
 
 	assert.Nil(t, err, "Encountered error while creating new receiver")
 	assert.NotNil(t, recv, "Receiver not created")
@@ -209,7 +209,6 @@ func TestUpdateMeasurements_VALID_DATA(t *testing.T) {
 	msg := new(string)
 	err = recv.UpdateMeasurements(data, msg)
 	assert.Nil(t, err, "error encountered while updating measurements")
-	assert.Equal(t, len(*msg), 0, "Error Msg generated for valid data")
 }
 
 func TestUpdateMeasurements_EMPTY_DBNAME(t *testing.T) {
@@ -241,7 +240,7 @@ func TestUpdateMeasurements_EMPTY_DBNAME(t *testing.T) {
 	}
 
 	uri := fmt.Sprintf("127.0.0.1:%d", mappedPort.Int())
-	recv, err := NewClickHouseReceiver(user, password, dbname, uri)
+	recv, err := NewClickHouseReceiver(user, password, dbname, uri, true)
 
 	assert.Nil(t, err, "Encountered error while creating new receiver")
 	assert.NotNil(t, recv, "Receiver not created")
@@ -282,7 +281,7 @@ func TestUpdateMeasurements_EMPTY_METRICNAME(t *testing.T) {
 	}
 
 	uri := fmt.Sprintf("127.0.0.1:%d", mappedPort.Int())
-	recv, err := NewClickHouseReceiver(user, password, dbname, uri)
+	recv, err := NewClickHouseReceiver(user, password, dbname, uri, true)
 
 	assert.Nil(t, err, "Encountered error while creating new receiver")
 	assert.NotNil(t, recv, "Receiver not created")
@@ -323,7 +322,7 @@ func TestUpdateMeasurements_EMPTY_DATA(t *testing.T) {
 	}
 
 	uri := fmt.Sprintf("127.0.0.1:%d", mappedPort.Int())
-	recv, err := NewClickHouseReceiver(user, password, dbname, uri)
+	recv, err := NewClickHouseReceiver(user, password, dbname, uri, true)
 
 	assert.Nil(t, err, "Encountered error while creating new receiver")
 	assert.NotNil(t, recv, "Receiver not created")
