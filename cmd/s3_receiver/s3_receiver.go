@@ -28,10 +28,10 @@ type S3Receiver struct {
 	sinks.SyncMetricHandler
 }
 
-func NewS3Receiver(awsEndpoint string, awsRegion string) (*S3Receiver, error) {
+func NewS3Receiver(awsEndpoint string, awsRegion string, username string, passwd string) (*S3Receiver, error) {
 	awsCfg, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithRegion(awsRegion),
-		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("test", "test", "")),
+		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(username, passwd, "")),
 	)
 	if err != nil {
 		return nil, err

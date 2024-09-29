@@ -81,7 +81,7 @@ func TestNewS3Receiver(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client, err := NewS3Receiver(fmt.Sprintf("http://%s:%d", host, mappedPort.Int()), "us-east-1")
+	client, err := NewS3Receiver(fmt.Sprintf("http://%s:%d", host, mappedPort.Int()), "us-east-1", "test", "test")
 
 	assert.Nil(t, err, "error encoutnered while creating S3Receiver")
 	assert.NotNil(t, client, "received nil instead of client")
@@ -117,7 +117,7 @@ func TestAddDatabase(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client, err := NewS3Receiver(fmt.Sprintf("http://%s:%d", host, mappedPort.Int()), "us-east-1")
+	client, err := NewS3Receiver(fmt.Sprintf("http://%s:%d", host, mappedPort.Int()), "us-east-1", "test", "test")
 
 	assert.Nil(t, err, "error encoutnered while creating S3Receiver")
 	assert.NotNil(t, client, "received nil instead of client")
@@ -160,7 +160,7 @@ func TestUpdateMeasurements_VALID(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client, err := NewS3Receiver(fmt.Sprintf("http://%s:%d", host, mappedPort.Int()), "us-east-1")
+	client, err := NewS3Receiver(fmt.Sprintf("http://%s:%d", host, mappedPort.Int()), "us-east-1", "test", "test")
 
 	assert.Nil(t, err, "error encoutnered while creating S3Receiver")
 	assert.NotNil(t, client, "received nil instead of client")
@@ -201,7 +201,7 @@ func TestUpdateMeasurements_EMPTYDB(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client, err := NewS3Receiver(fmt.Sprintf("http://%s:%d", host, mappedPort.Int()), "us-east-1")
+	client, err := NewS3Receiver(fmt.Sprintf("http://%s:%d", host, mappedPort.Int()), "us-east-1", "test", "test")
 
 	assert.Nil(t, err, "error encoutnered while creating S3Receiver")
 	assert.NotNil(t, client, "received nil instead of client")
@@ -243,7 +243,7 @@ func TestUpdateMeasurements_EMPTY_METRIC_NAME(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client, err := NewS3Receiver(fmt.Sprintf("http://%s:%d", host, mappedPort.Int()), "us-east-1")
+	client, err := NewS3Receiver(fmt.Sprintf("http://%s:%d", host, mappedPort.Int()), "us-east-1", "test", "test")
 
 	assert.Nil(t, err, "error encoutnered while creating S3Receiver")
 	assert.NotNil(t, client, "received nil instead of client")
@@ -285,7 +285,7 @@ func TestUpdateMeasurements_EMPTY_METRICS(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client, err := NewS3Receiver(fmt.Sprintf("http://%s:%d", host, mappedPort.Int()), "us-east-1")
+	client, err := NewS3Receiver(fmt.Sprintf("http://%s:%d", host, mappedPort.Int()), "us-east-1", "test", "test")
 
 	assert.Nil(t, err, "error encoutnered while creating S3Receiver")
 	assert.NotNil(t, client, "received nil instead of client")
