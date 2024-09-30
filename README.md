@@ -30,6 +30,7 @@ Viola! You havea  seemless integration between pgwatch and your custom sink. Try
 ## Developing custom sinks
 
 To develop your own sinks you can utilize the template that we have used for each of the example receivers. You can copy the main.go file as it is and use the Receiver interface to write your own the UpdateMeasurements functions.
+You'll need to import the package `github.com/destrex271/pgwatch3_rpc_server/sinks` to utilize the components to build your own sinks.
 
 You can refer our exmaple sinks to develop your own sinks or extend these for your usecases:
 
