@@ -30,3 +30,12 @@ Viola! You havea  seemless integration between pgwatch and your custom sink. Try
 ## Developing custom sinks
 
 To develop your own sinks you can utilize the template that we have used for each of the example receivers. You can copy the main.go file as it is and use the Receiver interface to write your own the UpdateMeasurements functions.
+
+You can refer our exmaple sinks to develop your own sinks or extend these for your usecases:
+
+ - [CSV Receiver](/cmd/csv_receiver/README.md): Store measurements in CSV files
+ - [Kafka Receiver](/cmd/kafka_prod_receiver/README.md): Stream measurements using kafka
+ - [Parquet Receiver](/cmd/parquet_receiver/README.md): Store measurements in parquet files
+ - [Clickhouse Receiver](/cmd/clickhouse_receiver/clickhouse_receiver.go): Store measurements in OLAP databases like Clickhouse for analytics
+ - [Llama Receiver](/cmd/llama_receiver/README.md): Gain performance insights and recommendations based on your measurements using the power of `tinyllama`
+ - [S3 Receiver](/cmd/s3_receiver/README.md): Store measurements in AWS S3
