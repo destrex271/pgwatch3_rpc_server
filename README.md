@@ -39,3 +39,5 @@ You can refer our exmaple sinks to develop your own sinks or extend these for yo
  - [Clickhouse Receiver](/cmd/clickhouse_receiver/clickhouse_receiver.go): Store measurements in OLAP databases like Clickhouse for analytics
  - [Llama Receiver](/cmd/llama_receiver/README.md): Gain performance insights and recommendations based on your measurements using the power of `tinyllama`
  - [S3 Receiver](/cmd/s3_receiver/README.md): Store measurements in AWS S3
+
+To get a simple to use template with no additional configurations, you can use the [text receiver example](/cmd/text_receiver/main.go) provided along with the other receiver examples.
