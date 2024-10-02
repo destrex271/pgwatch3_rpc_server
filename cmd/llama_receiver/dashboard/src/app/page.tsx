@@ -2,9 +2,13 @@ import { DashboardComponent } from "@/components/dashboard";
 import Image from "next/image";
 import 'dotenv/config'
 import { config } from "dotenv";
+import { Metadata } from 'next';
 
 const API_ENDPOINT = process.env.API_ENDPOINT
 
+export const metadata: Metadata = {
+  title: 'All Databases',
+};
 
 export default async function Home() {
     config()

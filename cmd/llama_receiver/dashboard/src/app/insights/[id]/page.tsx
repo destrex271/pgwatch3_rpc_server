@@ -1,4 +1,9 @@
 import { InsightsComponent } from "@/components/insights";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: 'Insgiht for DB',
+};
 
 export default async function Page({ params }) {
     let id = params.id

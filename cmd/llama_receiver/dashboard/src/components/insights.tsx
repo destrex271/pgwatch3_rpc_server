@@ -7,14 +7,6 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Search, Filter } from 'lucide-react'
 import Link from 'next/link'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 
 interface Insight {
   id: string
@@ -63,15 +55,23 @@ export function InsightsComponent({data, db_id}) {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Id</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead className="text-right">Created At</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {data != null && data.map((insight) => (
-                  <TableRow key={insight["id"]}>
-                    <TableCell>{insight["data"]}</TableCell>
-                    <TableCell className="text-right">{new Date(insight["created_time"]).toLocaleString()}</TableCell>
+                  <TableRow key={insight["id"]} className="py-2">
+                    <TableCell className="text-left p-5" style={{borderBottom:"1px solid #00000022"}} >{insight["id"]}</TableCell>
+                    <TableCell style={{border:"1px solid #00000022"}}>
+                      <div style={{ overflowX: "auto" }}>
+                        <pre style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}>
+                          {insight["data"]}
+                        </pre>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right" style={{borderBottom:"1px solid #00000022"}} >{new Date(insight["created_time"]).toLocaleString()}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
