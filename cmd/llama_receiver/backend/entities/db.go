@@ -9,7 +9,7 @@ import (
 type DB struct {
 	Id               int    `json:"id"`
 	Name             string `json:"name"`
-	MeasurementCount int    `json:"int"`
+	MeasurementCount int    `json:"measurement_count"`
 }
 
 func GetDBs(ctx context.Context) ([]DB, error) {

@@ -8,6 +8,7 @@ import (
 )
 
 type Insights struct {
+	Id          int       `json:"id"`
 	Data        string    `json:"data"`
 	DatabaseID  string    `json:"databaseID"`
 	CreatedTime time.Time `json:"created_time"`
@@ -33,6 +34,8 @@ func GetAllInsightsForDB(ctx context.Context, id int) ([]Insights, error) {
 			&insight.DatabaseID,
 			&insight.CreatedTime,
 		)
+
+		insight.Id = len(insights) + 1
 
 		if err != nil {
 			return nil, err

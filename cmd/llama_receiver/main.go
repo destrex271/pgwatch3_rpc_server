@@ -7,6 +7,8 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
+	"os"
+	"os/exec"
 
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
 )
@@ -18,6 +20,7 @@ func main() {
 	serverURI := flag.String("ollamaURI", "http://localhost:11434", "URI for Ollama server")
 	pgURI := flag.String("pgURI", "postgres://pgwatch:pgwatchadmin@localhost:5432/postgres", "connection string for postgres")
 	batchSize := flag.Int("batchSize", 10, "Specify batch size for generating LLM insights")
+	enableAPI := flag.Bool("apiEnable", true, "Set false if you do not want to get insgihts via API endpoint. Default endpoint is at localhost:6555")
 	flag.Parse()
 
 	if *port == "-1" {
@@ -39,6 +42,21 @@ func main() {
 
 	if err != nil {
 		log.Println(err)
+	}
+
+	if *enableAPI {
+		go func() {
+			os.Setenv("pgURI", *pgURI)
+			cmnd := exec.Command("./cmd/llama_receiver/backend/main")
+			log.Println(cmnd)
+			err = cmnd.Start()
+			if err != nil {
+				log.Println("[ERROR]: ", err)
+			} else {
+				log.Println("[INFO]: You can start the dashbaord using npm run dev")
+			}
+		}()
+
 	}
 
 	http.Serve(listener, nil)
