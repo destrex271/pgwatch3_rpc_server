@@ -8,24 +8,10 @@ import { Button } from "@/components/ui/button"
 import { DatabaseIcon, SearchIcon } from 'lucide-react'
 import Link from 'next/link'
 
-interface Database {
-  id: string
-  name: string
-  insightsCount: number
-  lastUpdated: string
-}
-
-const mockDatabases: Database[] = [
-  { id: '1', name: 'Customer Data', insightsCount: 15, lastUpdated: '2023-09-15T14:30:00Z' },
-  { id: '2', name: 'Product Inventory', insightsCount: 8, lastUpdated: '2023-09-14T09:45:00Z' },
-  { id: '3', name: 'Sales Transactions', insightsCount: 22, lastUpdated: '2023-09-15T18:20:00Z' },
-  { id: '4', name: 'User Analytics', insightsCount: 12, lastUpdated: '2023-09-13T11:10:00Z' },
-]
-
-export function DashboardComponent() {
+export async function DashboardComponent({data}) {
   const [searchTerm, setSearchTerm] = useState('')
-
-  const filteredDatabases = mockDatabases.filter(db =>
+  
+  const filteredDatabases = data.filter(db =>
     db.name.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
@@ -57,8 +43,7 @@ export function DashboardComponent() {
             <TableHeader>
               <TableRow>
                 <TableHead>Database Name</TableHead>
-                <TableHead>Insights Generated</TableHead>
-                <TableHead>Last Updated</TableHead>
+                <TableHead>Total Measurements</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -66,8 +51,7 @@ export function DashboardComponent() {
               {filteredDatabases.map((db) => (
                 <TableRow key={db.id}>
                   <TableCell>{db.name}</TableCell>
-                  <TableCell>{db.insightsCount}</TableCell>
-                  <TableCell>{new Date(db.lastUpdated).toLocaleString()}</TableCell>
+                  <TableCell>{db.measurement_count}</TableCell>
                   <TableCell>
                     <Link href={`/insights/${db.id}`} passHref>
                       <Button variant="outline" size="sm">View Insights</Button>
