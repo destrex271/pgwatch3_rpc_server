@@ -1,5 +1,7 @@
 [![Tests](https://github.com/destrex271/pgwatch3_rpc_server/actions/workflows/test.yml/badge.svg)](https://github.com/destrex271/pgwatch3_rpc_server/actions/workflows/test.yml)
 [![Coverage Status](https://coveralls.io/repos/github/destrex271/pgwatch3_rpc_server/badge.svg?branch=main)](https://coveralls.io/github/destrex271/pgwatch3_rpc_server?branch=main)
+![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/destrex271/pgwatch3_rpc_server)
+
 
 # Pgwatch3 RPC Receivers
 This repository contains the essential components to build your own Remote Sinks for Pgwatch v3. You can find the basic structure to create a Sink(or Receiver as we call it in this repo) which is basically a RPC Server that the pgwatch RPC Client interacts with.
@@ -8,8 +10,20 @@ The primary goal of this repository is to provide you with the building blocks t
 
 Checkout <a href="https://github.com/cybertec-postgresql/pgwatch">PgWatch</a> to get started with this project.
 
-## Running custom Sinks
+## Architecture
+The Remote Sinks work using RPC protocol. Some cool advantages of using RPC are:
+ - PgWatch is not concerned about the actual sink implementation. You can literally do anything with the measurements delievered to you by pgwatch and share messages per function call if requried.
+ - The sink implementations can be easily developed in Go, which has support for most of the storage formats out there and is pretty easy to write and work with. 
 
+
+![image](https://github.com/user-attachments/assets/a759597f-6369-4716-bbd0-573281c54445)
+
+The RPC receiver is treated as the default sink formats and no special changes are required in your pgwatch setup. 
+
+To use a RPC sink you can start pgwatch with the argument: `--sink=rpc://<host>:<port>`.
+
+## Running Custom RPC Sinks
+By default the RPC Server for your sink listens at 0.0.0.0 with the specified port number.
 To start the any of the given receivers you can use:
 
 ```bash
