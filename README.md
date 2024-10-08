@@ -19,6 +19,9 @@ The Remote Sinks work using RPC protocol. Some cool advantages of using RPC are:
 
 ![image](https://github.com/user-attachments/assets/a759597f-6369-4716-bbd0-573281c54445)
 
+![image](https://github.com/user-attachments/assets/8a09a6fe-5fd2-4c55-b0a2-47a92ed12c3a)
+
+
 The RPC receiver is treated as the default sink formats and no special changes are required in your pgwatch setup. 
 
 To use a RPC sink you can start pgwatch with the argument: `--sink=rpc://<host>:<port>`.
