@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"time"
 
@@ -23,8 +22,8 @@ type DuckDBReceiver struct {
 }
 
 func (dbr *DuckDBReceiver) initializeTable() {
-	// TODO: change below "measurements" to dbr.TableName
-	_, err := dbr.Conn.Exec("CREATE TABLE IF NOT EXISTS measurements(dbname VARCHAR, metric_name VARCHAR, data JSON, custom_tags JSON, metric_def JSON, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (dbname, timestamp))")
+	createTableQuery := "CREATE TABLE IF NOT EXISTS " + dbr.TableName + "(dbname VARCHAR, metric_name VARCHAR, data JSON, custom_tags JSON, metric_def JSON, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (dbname, timestamp))"
+	_, err := dbr.Conn.Exec(createTableQuery)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -32,6 +31,7 @@ func (dbr *DuckDBReceiver) initializeTable() {
 }
 
 func NewDBDuckReceiver(databaseName string) (dbr *DuckDBReceiver, err error) {
+	// close fatally if table isnt created, or if receiver isnt initailized properly
 	db, err := sql.Open("duckdb", databaseName)
 	if err != nil {
 		log.Fatal(err)
@@ -49,27 +49,11 @@ func NewDBDuckReceiver(databaseName string) (dbr *DuckDBReceiver, err error) {
 	return dbr, nil
 }
 
-// type MeasurementEnvelope struct {
-// 	DBName           string
-// 	SourceType       string
-// 	MetricName       string
-// 	CustomTags       map[string]string
-// 	Data             Measurements
-// 	MetricDef        Metric
-// 	RealDbname       string
-// 	SystemIdentifier string
-// }
-
 func (r *DuckDBReceiver) InsertMeasurements(data *api.MeasurementEnvelope, ctx context.Context) error {
-	fmt.Print("DATA RECIEVED: ", "\n\n\n")
 	metricDef, _ := json.Marshal(data.MetricDef)
-	fmt.Println(string(metricDef))
 	customTagsJSON, _ := json.Marshal(data.CustomTags)
-	// measurementJSON, _ := json.Marshal(data.Data)
 
-	// https://duckdb.org/docs/clients/go.html
 	// https://github.com/marcboeker/go-duckdb/blob/main/examples/appender/main.go
-	// read more on this https://pkg.go.dev/github.com/marcboeker/go-duckdb@v1.8.4#NewConnector
 	connector, err := duckdb.NewConnector(r.DBName, nil)
 	if err != nil {
 		log.Print("Error: ", err)
@@ -81,6 +65,7 @@ func (r *DuckDBReceiver) InsertMeasurements(data *api.MeasurementEnvelope, ctx c
 		return err
 	}
 	defer conn.Close()
+	// appender is used for  bulk inserts and already uses the transaction context. see- https://duckdb.org/docs/clients/go.html
 	appender, err := duckdb.NewAppenderFromConn(conn, "", r.TableName)
 	if err != nil {
 		log.Print("Error: ", err)
