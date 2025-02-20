@@ -10,7 +10,6 @@ import (
 
 	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
-	"github.com/marcboeker/go-duckdb"
 )
 
 type DuckDBReceiver struct {
@@ -35,61 +34,68 @@ func NewDBDuckReceiver(databaseName string) (dbr *DuckDBReceiver, err error) {
 	db, err := sql.Open("duckdb", databaseName)
 	if err != nil {
 		log.Fatal(err)
-		return nil, err
 	}
 
 	dbr = &DuckDBReceiver{
 		Conn:              db,
 		DBName:            databaseName,
 		TableName:         "measurements",
+		Ctx:               context.Background(),
 		SyncMetricHandler: sinks.NewSyncMetricHandler(1024),
 	}
 
 	dbr.initializeTable()
 	return dbr, nil
 }
-
 func (r *DuckDBReceiver) InsertMeasurements(data *api.MeasurementEnvelope, ctx context.Context) error {
 	metricDef, _ := json.Marshal(data.MetricDef)
 	customTagsJSON, _ := json.Marshal(data.CustomTags)
+	// log.Println("Data:: ", data)
 
-	// https://github.com/marcboeker/go-duckdb/blob/main/examples/appender/main.go
-	connector, err := duckdb.NewConnector(r.DBName, nil)
+	// use direct SQL approach - just use the existing connection with the standard insert statement
+	tx, err := r.Conn.BeginTx(ctx, nil)
 	if err != nil {
-		log.Print("Error: ", err)
+		log.Printf("Error beginning transaction: %v", err)
 		return err
 	}
-	conn, err := connector.Connect(context.Background())
+
+	stmt, err := tx.Prepare("INSERT INTO " + r.TableName +
+		" (dbname, metric_name, data, custom_tags, metric_def, timestamp) VALUES (?, ?, ?, ?, ?, ?)")
 	if err != nil {
-		log.Print("Error: ", err)
+		log.Printf("error from preparing statement: %v", err)
+		tx.Rollback()
 		return err
 	}
-	defer conn.Close()
-	// appender is used for  bulk inserts and already uses the transaction context. see- https://duckdb.org/docs/clients/go.html
-	appender, err := duckdb.NewAppenderFromConn(conn, "", r.TableName)
-	if err != nil {
-		log.Print("Error: ", err)
-		return err
-	}
-	defer appender.Close()
+	defer stmt.Close()
+
+	insertedRows := 0
 	for _, measurement := range data.Data {
 		measurementJSON, err := json.Marshal(measurement)
 		if err != nil {
-			log.Print("failed to marshal measurement: ", err)
+			log.Printf("error from marshal measurement: %v", err)
+			tx.Rollback()
 			return err
 		}
 
-		if err := appender.AppendRow(
+		_, err = stmt.Exec(
 			data.DBName,
 			data.MetricName,
 			string(measurementJSON),
 			string(customTagsJSON),
 			string(metricDef),
 			time.Now(),
-		); err != nil {
-			log.Print("could not append row: ", err)
+		)
+		if err != nil {
+			log.Printf("error from insert: %v", err)
+			tx.Rollback()
 			return err
 		}
+		insertedRows++
+	}
+
+	if err := tx.Commit(); err != nil {
+		log.Printf("error from committing transaction: %v", err)
+		return err
 	}
 	return nil
 }
