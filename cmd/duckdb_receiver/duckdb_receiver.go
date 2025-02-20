@@ -29,7 +29,7 @@ func (dbr *DuckDBReceiver) initializeTable() {
 	log.Print("Table successfully created")
 }
 
-func NewDBDuckReceiver(databaseName string) (dbr *DuckDBReceiver, err error) {
+func NewDBDuckReceiver(databaseName string, tableName string) (dbr *DuckDBReceiver, err error) {
 	// close fatally if table isnt created, or if receiver isnt initailized properly
 	db, err := sql.Open("duckdb", databaseName)
 	if err != nil {
@@ -39,7 +39,7 @@ func NewDBDuckReceiver(databaseName string) (dbr *DuckDBReceiver, err error) {
 	dbr = &DuckDBReceiver{
 		Conn:              db,
 		DBName:            databaseName,
-		TableName:         "measurements",
+		TableName:         tableName,
 		Ctx:               context.Background(),
 		SyncMetricHandler: sinks.NewSyncMetricHandler(1024),
 	}
@@ -68,7 +68,6 @@ func (r *DuckDBReceiver) InsertMeasurements(data *api.MeasurementEnvelope, ctx c
 	}
 	defer stmt.Close()
 
-	insertedRows := 0
 	for _, measurement := range data.Data {
 		measurementJSON, err := json.Marshal(measurement)
 		if err != nil {
@@ -90,7 +89,6 @@ func (r *DuckDBReceiver) InsertMeasurements(data *api.MeasurementEnvelope, ctx c
 			tx.Rollback()
 			return err
 		}
-		insertedRows++
 	}
 
 	if err := tx.Commit(); err != nil {

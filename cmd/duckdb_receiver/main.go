@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"net"
 	"net/http"
@@ -10,42 +11,28 @@ import (
 )
 
 func main() {
-	// port := flag.String("port", "-1", "Specify the port where you want you sink to receive the measaurements on.")
-	// // StorageFolder := flag.String("rootFolder", ".", "Only for formats like CSV...\n")
-	// flag.Parse()
+	port := flag.String("port", "-1", "Specify the port where you want you sink to receive the measaurements on.")
+	dbPath := flag.String("dbPath", "metrics.duckdb", "Path to the DuckDB database file")
+	tableName := flag.String("tableName", "measurements", "Name of the measurements table")
 
-	// if *port == "-1" {
-	// 	log.Println("[ERROR]: No Port Specified")
-	// 	return
-	// }
+	flag.Parse()
 
-	dbr, err := NewDBDuckReceiver("test_metrics.duckdb")
+	if *port == "-1" {
+		log.Println("[ERROR]: No Port Specified")
+		return
+	}
+
+	dbr, err := NewDBDuckReceiver(*dbPath, *tableName)
 	if err != nil {
 		log.Fatal(err)
 	}
-	// rows, err := dbr.Conn.Query("SELECT * FROM measurements")
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// defer rows.Close()
 
-	// for rows.Next() {
-	// 	var dbName, metricName string
-	// 	var data, customTags, metricDef map[string]interface{} // envelope  data
-	// 	var timestamp time.Time
-	// 	err := rows.Scan(&dbName, &metricName, &data, &customTags, &metricDef, &timestamp)
-	// 	if err != nil {
-	// 		log.Printf("[-] Error at row: %v", err)
-	// 		continue
-	// 	}
-	// 	fmt.Printf("DB: %s, Metric: %s, Time: %s\n", dbName, metricName, timestamp)
-
-	// }
 	rpc.RegisterName("Receiver", dbr) // Primary Receiver
+	log.Println("[INFO]: DuckDB Receiver Initialized with database:", *dbPath)
 	log.Println("[INFO]: Registered Receiver")
 	rpc.HandleHTTP()
 
-	listener, err := net.Listen("tcp", "0.0.0.0:9876")
+	listener, err := net.Listen("tcp", "0.0.0.0:"+*port)
 
 	if err != nil {
 		log.Println(err)

@@ -72,7 +72,7 @@ func TestMain(m *testing.M) {
 }
 
 func setupTest() (*DuckDBReceiver, error) {
-	return NewDBDuckReceiver(testDBPath)
+	return NewDBDuckReceiver(testDBPath, "measurements")
 }
 
 func TestInitialize(t *testing.T) {
