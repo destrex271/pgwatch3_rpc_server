@@ -14,7 +14,7 @@ import (
 func main() {
 
 	// Important Flags
-	port := flag.String("port", "-1", "Specify the port where you want you sink to receive the measaurements on.")
+	port := flag.String("port", "-1", "Specify the port where you want your sink to receive the measurements on.")
 	flag.Parse()
 
 	if *port == "-1" {

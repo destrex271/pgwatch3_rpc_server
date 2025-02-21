@@ -13,7 +13,7 @@ import (
 func main() {
 
 	// Important Flags
-	port := flag.String("port", "-1", "Specify the port where you want you sink to receive the measaurements on.")
+	port := flag.String("port", "-1", "Specify the port where you want your sink to receive the measurements on.")
 	kafkaHost := flag.String("kafkaHost", "localhost:9092", "Specify the host and port of the kafka instance")
 	autoadd := flag.Bool("autoadd", true, "Specifies if new databases are automatically added as a new kafka topic. Default is true. You can disable this service and send an 'ADD' sync metric signal before sending data")
 	flag.Parse()
