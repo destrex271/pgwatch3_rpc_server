@@ -7,6 +7,7 @@ import (
 	"errors"
 	"log"
 	"time"
+	"regexp"
 
 	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
@@ -21,6 +22,12 @@ type DuckDBReceiver struct {
 }
 
 func (dbr *DuckDBReceiver) initializeTable() {
+	// Allow only alphanumeric and underscores in table names
+	validateTableName := regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
+	if !validateTableName.MatchString(dbr.TableName) {
+		log.Fatal("Invalid table name: potential SQL injection risk")
+	}
+
 	createTableQuery := "CREATE TABLE IF NOT EXISTS " + dbr.TableName + "(dbname VARCHAR, metric_name VARCHAR, data JSON, custom_tags JSON, metric_def JSON, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (dbname, timestamp))"
 	_, err := dbr.Conn.Exec(createTableQuery)
 	if err != nil {
