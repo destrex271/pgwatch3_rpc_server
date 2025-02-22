@@ -43,7 +43,7 @@ Now once your receiver is up you can setup pgwatch as follows:
 go run ./cmd/pgwatch --sources=<postgres://postgres@localhost:5432/postgres> --sink=rpc://<ip/hostname_of_your_sink>:<port_where_recv_is_listening>
 ```
 
-Viola! You havea  seemless integration between pgwatch and your custom sink. Try out our various implementations to get a feel of how these receivers feel with your custom pgwatch instances.
+Voila! You have a seamless integration between pgwatch and your custom sink. Try out our various implementations to get a feel of how these receivers feel with your custom pgwatch instances.
 
 ## Developing custom sinks
 
