@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	port := flag.String("port", "-1", "Specify the port where you want you sink to receive the measaurements on.")
+	port := flag.String("port", "-1", "Specify the port where you want your sink to receive the measurements on.")
 	dbPath := flag.String("dbPath", "metrics.duckdb", "Path to the DuckDB database file")
 	tableName := flag.String("tableName", "measurements", "Name of the measurements table")
 
