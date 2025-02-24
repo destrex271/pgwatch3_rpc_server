@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -28,7 +29,8 @@ func (dbr *DuckDBReceiver) initializeTable() {
 		log.Fatal("Invalid table name: potential SQL injection risk")
 	}
 
-	createTableQuery := "CREATE TABLE IF NOT EXISTS " + dbr.TableName + "(dbname VARCHAR, metric_name VARCHAR, data JSON, custom_tags JSON, metric_def JSON, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (dbname, timestamp))"
+	createTableQuery := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (dbname VARCHAR, metric_name VARCHAR, data JSON, custom_tags JSON, metric_def JSON, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (dbname, timestamp))`, dbr.TableName)
+
 	_, err := dbr.Conn.Exec(createTableQuery)
 	if err != nil {
 		log.Fatal(err)
