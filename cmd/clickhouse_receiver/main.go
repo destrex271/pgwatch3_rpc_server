@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/rpc"
 	"os"
+	"strconv"
 
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
 )
@@ -17,8 +18,9 @@ func main() {
 	port := flag.String("port", "-1", "Specify the port where you want your sink to receive the measurements on.")
 	flag.Parse()
 
-	if *port == "-1" {
-		log.Println("[ERROR]: No Port Specified")
+	portInt, error := strconv.Atoi(*port)
+	if error != nil || portInt < 0 || portInt > 65535 {
+		log.Println("[ERROR]: Invalid Port Number")
 		return
 	}
 

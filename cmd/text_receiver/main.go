@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
+	"strconv"
 
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
 )
@@ -18,8 +19,9 @@ func main() {
 	StorageFolder := flag.String("rootFolder", ".", "Only for formats like CSV...\n")
 	flag.Parse()
 
-	if *port == "-1" {
-		log.Println("[ERROR]: No Port Specified")
+	portInt, err := strconv.Atoi(*port)
+	if err != nil || portInt < 0 || portInt > 65535 {
+		log.Println("[ERROR]: Invalid Port Number")
 		return
 	}
 

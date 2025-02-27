@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
+	"strconv"
 
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
 )
@@ -18,8 +19,9 @@ func main() {
 	autoadd := flag.Bool("autoadd", true, "Specifies if new databases are automatically added as a new kafka topic. Default is true. You can disable this service and send an 'ADD' sync metric signal before sending data")
 	flag.Parse()
 
-	if *port == "-1" {
-		log.Println("[ERROR]: No Port Specified")
+	portInt, error := strconv.Atoi(*port)
+	if error != nil || portInt < 0 || portInt > 65535 {
+		log.Println("[ERROR]: Invalid Port Number")
 		return
 	}
 

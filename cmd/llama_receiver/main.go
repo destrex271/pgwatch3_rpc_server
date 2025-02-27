@@ -9,6 +9,7 @@ import (
 	"net/rpc"
 	"os"
 	"os/exec"
+	"strconv"
 
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
 )
@@ -23,8 +24,9 @@ func main() {
 	enableAPI := flag.Bool("apiEnable", true, "Set false if you do not want to get insgihts via API endpoint. Default endpoint is at localhost:6555")
 	flag.Parse()
 
-	if *port == "-1" {
-		log.Println("[ERROR]: No Port Specified")
+	portInt, error := strconv.Atoi(*port)
+	if error != nil || portInt < 0 || portInt > 65535 {
+		log.Println("[ERROR]: Invalid Port Number")
 		return
 	}
 

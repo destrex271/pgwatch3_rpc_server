@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
+	"strconv"
 
 	_ "github.com/marcboeker/go-duckdb"
 )
@@ -17,8 +18,9 @@ func main() {
 
 	flag.Parse()
 
-	if *port == "-1" {
-		log.Println("[ERROR]: No Port Specified")
+	portInt, error := strconv.Atoi(*port)
+	if error != nil || portInt < 0 || portInt > 65535 {
+		log.Println("[ERROR]: Invalid Port Number")
 		return
 	}
 
