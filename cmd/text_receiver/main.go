@@ -21,7 +21,7 @@ func main() {
 	if *port == "-1" {
 		log.Println("[ERROR]: No Port Specified")
 		return
-	}
+	}	
 
 	var server sinks.Receiver
 	server = TextReceiver{FullPath: *StorageFolder, SyncMetricHandler: sinks.NewSyncMetricHandler(1024)}
@@ -33,7 +33,7 @@ func main() {
 	listener, err := net.Listen("tcp", "0.0.0.0:"+*port)
 
 	if err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 
 	http.Serve(listener, nil)

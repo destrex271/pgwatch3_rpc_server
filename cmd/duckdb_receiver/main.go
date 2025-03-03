@@ -35,7 +35,7 @@ func main() {
 	listener, err := net.Listen("tcp", "0.0.0.0:"+*port)
 
 	if err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 
 	http.Serve(listener, nil)
