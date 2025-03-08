@@ -5,7 +5,7 @@
 
 
 # Pgwatch3 RPC Receivers
-This repository contains the essential components to build your own Remote Sinks for Pgwatch v3. You can find the basic structure to create a Sink(or Receiver as we call it in this repo) which is basically a RPC Server that the pgwatch RPC Client interacts with.
+This repository contains the essential components to build your own Remote Sinks for Pgwatch v3. You can find the basic structure to create a Sink (or Receiver as we call it in this repo) which is basically a RPC Server that the pgwatch RPC Client interacts with.
 
 The primary goal of this repository is to provide you with the building blocks to get started with your own implementations and also to provide some examples of places where measurements from pgwatch can be used. You can find some of our example implementations in the cmd folder.
 
@@ -13,7 +13,7 @@ Checkout <a href="https://github.com/cybertec-postgresql/pgwatch">PgWatch</a> to
 
 ## Architecture
 The Remote Sinks work using RPC protocol. Some cool advantages of using RPC are:
- - PgWatch is not concerned about the actual sink implementation. You can literally do anything with the measurements delievered to you by pgwatch and share messages per function call if requried.
+ - PgWatch is not concerned about the actual sink implementation. You can literally do anything with the measurements delivered to you by pgwatch and share messages per function call if required.
  - The sink implementations can be easily developed in Go, which has support for most of the storage formats out there and is pretty easy to write and work with. 
 
 
@@ -28,7 +28,7 @@ To use a RPC sink you can start pgwatch with the argument: `--sink=rpc://<host>:
 
 ## Running Custom RPC Sinks
 By default the RPC Server for your sink listens at 0.0.0.0 with the specified port number.
-To start the any of the given receivers you can use:
+To start any of the given receivers you can use:
 
 ```bash
 # Parquet Receiver
@@ -50,7 +50,7 @@ Viola! You havea  seemless integration between pgwatch and your custom sink. Try
 To develop your own sinks you can utilize the template that we have used for each of the example receivers. You can copy the main.go file as it is and use the Receiver interface to write your own the UpdateMeasurements functions.
 You'll need to import the package `github.com/destrex271/pgwatch3_rpc_server/sinks` to utilize the components to build your own sinks.
 
-You can refer our exmaple sinks to develop your own sinks or extend these for your usecases:
+You can refer to our example sinks to develop your own sinks or extend these for your use cases:
 
  - [CSV Receiver](/cmd/csv_receiver/README.md): Store measurements in CSV files
  - [Kafka Receiver](/cmd/kafka_prod_receiver/README.md): Stream measurements using kafka
