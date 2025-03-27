@@ -1,0 +1,39 @@
+{
+  "tableName": "pgwatch_metrics",
+  "tableType": "OFFLINE",
+  "segmentsConfig": {
+    "timeColumnName": "timestamp",
+    "timeType": "MILLISECONDS",
+    "segmentPushType": "APPEND",
+    "segmentAssignmentStrategy": "BalanceNumSegmentAssignmentStrategy",
+    "replication": "1",
+    "schemaName": "pgwatch_metrics"
+  },
+  "tenants": {},
+  "tableIndexConfig": {
+    "loadMode": "MMAP"
+  },
+  "ingestionConfig": {
+    "transformConfigs": []
+  },
+  "metadata": {
+    "customConfigs": {}
+  },
+  "fieldConfigList": [
+    {
+      "name": "timestamp",
+      "encodingType": "RAW",
+      "indexTypes": ["SORTED"]
+    },
+    {
+      "name": "dbname",
+      "encodingType": "DICTIONARY",
+      "indexTypes": ["INVERTED"]
+    },
+    {
+      "name": "metric_name",
+      "encodingType": "DICTIONARY",
+      "indexTypes": ["INVERTED"]
+    }
+  ]
+}
