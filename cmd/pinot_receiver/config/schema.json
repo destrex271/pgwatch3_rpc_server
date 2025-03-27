@@ -1,0 +1,39 @@
+{
+  "schemaName": "pgwatch_metrics",
+  "dimensionFieldSpecs": [
+    {
+      "name": "dbname",
+      "dataType": "STRING",
+      "defaultNullValue": ""
+    },
+    {
+      "name": "metric_name",
+      "dataType": "STRING",
+      "defaultNullValue": ""
+    },
+    {
+      "name": "data",
+      "dataType": "STRING",
+      "defaultNullValue": "{}"
+    },
+    {
+      "name": "custom_tags",
+      "dataType": "STRING",
+      "defaultNullValue": "{}"
+    },
+    {
+      "name": "metric_def",
+      "dataType": "STRING",
+      "defaultNullValue": "{}"
+    }
+  ],
+  "metricFieldSpecs": [],
+  "dateTimeFieldSpecs": [
+    {
+      "name": "timestamp",
+      "dataType": "TIMESTAMP",
+      "format": "1:MILLISECONDS:EPOCH",
+      "granularity": "1:MILLISECONDS"
+    }
+  ]
+}
