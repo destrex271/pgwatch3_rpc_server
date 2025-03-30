@@ -1,14 +1,14 @@
 package main
 
 import (
-	"fmt"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
-	"time"
 	"regexp"
+	"time"
 
 	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
@@ -46,14 +46,15 @@ func NewDBDuckReceiver(databaseName string, tableName string) (dbr *DuckDBReceiv
 	}
 
 	dbr = &DuckDBReceiver{
-		Conn:              db,
-		DBName:            databaseName,
-		TableName:         tableName,
-		Ctx:               context.Background(),
-		SyncMetricHandler: sinks.NewSyncMetricHandler(1024),
+		Conn:      db,
+		DBName:    databaseName,
+		TableName: tableName,
+		Ctx:       context.Background(),
 	}
 
 	dbr.initializeTable()
+	go dbr.HandleSyncMetric()
+
 	return dbr, nil
 }
 func (r *DuckDBReceiver) InsertMeasurements(data *api.MeasurementEnvelope, ctx context.Context) error {
@@ -136,4 +137,9 @@ func (r *DuckDBReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg
 	log.Println("[INFO]: Inserted batch at : " + time.Now().String())
 	*logMsg = "[INFO]: Successfully inserted batch!"
 	return nil
+}
+
+func (r *DuckDBReceiver) HandleSyncMetric() {
+	req := <-r.SyncChannel
+	log.Println("[INFO]: handle Sync Request", req)
 }

@@ -47,6 +47,8 @@ func NewPinotReceiver(controllerURL, tableName, configDir string) (*PinotReceive
 		return nil, fmt.Errorf("failed to initialize Pinot table: %v", err)
 	}
 
+	go receiver.HandleSyncMetric()
+
 	return receiver, nil
 }
 
@@ -334,4 +336,9 @@ func (r *PinotReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg 
 	log.Println("[INFO]: Inserted batch at : " + time.Now().String())
 	*logMsg = "[INFO]: Successfully inserted batch!"
 	return nil
+}
+
+func (r *PinotReceiver) HandleSyncMetric() {
+	req := <-r.SyncChannel
+	log.Println("[INFO]: handle Sync Request", req)
 }

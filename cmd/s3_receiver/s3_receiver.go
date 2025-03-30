@@ -49,6 +49,8 @@ func NewS3Receiver(awsEndpoint string, awsRegion string, username string, passwd
 		SyncMetricHandler: sinks.NewSyncMetricHandler(1024),
 	}
 
+	go recv.HandleSyncMetric()
+
 	return recv, nil
 }
 
@@ -142,4 +144,9 @@ func (r *S3Receiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *st
 	}
 
 	return nil
+}
+
+func (r *S3Receiver) HandleSyncMetric() {
+	req := <-r.SyncChannel
+	log.Println("[INFO]: handle Sync Request", req)
 }

@@ -22,6 +22,17 @@ type CSVReceiver struct {
 *       - Metric2.csv
  */
 
+func NewCSVReceiver(fullPath string) (tr *CSVReceiver) {
+	tr = &CSVReceiver{
+		FullPath:          fullPath,
+		SyncMetricHandler: sinks.NewSyncMetricHandler(1024),
+	}
+
+	go tr.HandleSyncMetric()
+
+	return tr
+}
+
 func (r CSVReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
 	if len(msg.DBName) == 0 {
 		return errors.New("Empty Database")
@@ -77,4 +88,9 @@ func (r CSVReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *st
 	}
 
 	return nil
+}
+
+func (r CSVReceiver) HandleSyncMetric() {
+	req := <-r.SyncChannel
+	log.Println("[INFO]: handled Sync Request", req)
 }

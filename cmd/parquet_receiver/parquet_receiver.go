@@ -11,7 +11,7 @@ import (
 	"github.com/parquet-go/parquet-go"
 )
 
-type ParqReceiver struct {
+type ParquetReceiver struct {
 	FullPath string
 	sinks.SyncMetricHandler
 }
@@ -26,7 +26,14 @@ type ParquetSchema struct {
 	SysIdentifier     string
 }
 
-func (r ParqReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
+func NewParquetReceiver(fullPath string) *ParquetReceiver {
+	return &ParquetReceiver{
+		FullPath:          fullPath,
+		SyncMetricHandler: sinks.NewSyncMetricHandler(1024),
+	}
+}
+
+func (r ParquetReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
 
 	if len(msg.DBName) == 0 {
 		*logMsg = "False Record delieverd"
