@@ -94,6 +94,8 @@ func NewClickHouseReceiver(user string, password string, dbname string, serverUR
 		return nil, err
 	}
 
+	go clickhouseRec.HandleSyncMetric()
+
 	log.Println("[INFO]: Done!")
 	return clickhouseRec, nil
 }
@@ -125,7 +127,7 @@ func (r *ClickHouseReceiver) InsertMeasurements(data *api.MeasurementEnvelope, c
 	metricDef, _ := json.Marshal(data.MetricDef)
 
 	batch, err := r.Conn.PrepareBatch(ctx, `
-		INSERT INTO Measurements (dbname, custom_tags, metric_def, real_dbname, system_identifier, source_type, data) 
+		INSERT INTO Measurements (dbname, custom_tags, metric_def, real_dbname, system_identifier, source_type, data)
 		VALUES (?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return fmt.Errorf("failed to prepare batch: %v", err)
@@ -180,4 +182,9 @@ func (r *ClickHouseReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, lo
 	log.Println("[INFO]: Inserted batch at : " + time.Now().String())
 	*logMsg = "[INFO]: Successfully inserted batch!"
 	return nil
+}
+
+func (r *ClickHouseReceiver) HandleSyncMetric() {
+	req := <-r.SyncChannel
+	log.Println("[INFO]: handle Sync Request", req)
 }

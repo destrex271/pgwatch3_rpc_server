@@ -6,8 +6,6 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
-
-	"github.com/destrex271/pgwatch3_rpc_server/sinks"
 )
 
 func main() {
@@ -22,9 +20,11 @@ func main() {
 		return
 	}
 
-	var server sinks.Receiver
+	// var server sinks.Receiver
 
-	server = CSVReceiver{FullPath: *StorageFolder, SyncMetricHandler: sinks.NewSyncMetricHandler(1024)}
+	// server = CSVReceiver{FullPath: *StorageFolder, SyncMetricHandler: sinks.NewSyncMetricHandler(1024)}
+	server := NewCSVReceiver(*StorageFolder)
+
 	log.Println("[INFO]: CSV Receiver Intialized")
 
 	rpc.RegisterName("Receiver", server) // Primary Receiver

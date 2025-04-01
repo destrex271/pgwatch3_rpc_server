@@ -6,8 +6,6 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
-
-	"github.com/destrex271/pgwatch3_rpc_server/sinks"
 )
 
 func main() {
@@ -21,10 +19,9 @@ func main() {
 	if *port == "-1" {
 		log.Println("[ERROR]: No Port Specified")
 		return
-	}	
+	}
 
-	var server sinks.Receiver
-	server = TextReceiver{FullPath: *StorageFolder, SyncMetricHandler: sinks.NewSyncMetricHandler(1024)}
+	server := NewTextReceiver(*StorageFolder)
 
 	rpc.RegisterName("Receiver", server) // Primary Receiver
 	log.Println("[INFO]: Registered Receiver")

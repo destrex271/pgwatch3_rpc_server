@@ -45,7 +45,7 @@ func TestUpdateMeasurements_PARQ(t *testing.T) {
 	}
 
 	// Create Parquet Receiver
-	recv := &ParqReceiver{
+	recv := &ParquetReceiver{
 		FullPath: fullPath,
 	}
 	msg := getMeasurementEnvelope()
@@ -75,7 +75,7 @@ func TestUpdateMeasurements_PARQ_EmptyDBName(t *testing.T) {
 	}
 
 	// Create Parquet Receiver
-	recv := &ParqReceiver{
+	recv := &ParquetReceiver{
 		FullPath: fullPath,
 	}
 	msg := getMeasurementEnvelope()
@@ -100,7 +100,7 @@ func TestUpdateMeasurements_PARQ_EmptyMetricName(t *testing.T) {
 	}
 
 	// Create Parquet Receiver
-	recv := &ParqReceiver{
+	recv := &ParquetReceiver{
 		FullPath: fullPath,
 	}
 	msg := getMeasurementEnvelope()
