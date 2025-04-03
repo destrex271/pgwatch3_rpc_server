@@ -104,21 +104,27 @@ func NewLlamaReceiver(llmServerURI string, pgURI string, ctx context.Context, ba
 }
 
 func (r *LlamaReceiver) HandleSyncMetric() {
-	req := <-r.SyncChannel
+	for {
+		req, ok := r.GetSyncChannelContent()
+		if !ok {
+			// channel has been closed
+			return
+		}
 
-	// Acquire connetion
-	conn, err := r.ConnPool.Acquire(r.Ctx)
-	if err != nil {
-		log.Println("[ERROR]: Unable to acquire connection")
-		return
-	}
-	defer conn.Release()
+		// Acquire connetion
+		conn, err := r.ConnPool.Acquire(r.Ctx)
+		if err != nil {
+			log.Println("[ERROR]: Unable to acquire connection")
+			return
+		}
+		defer conn.Release()
 
-	switch req.Operation {
-	case "Add":
-		conn.Exec(r.Ctx, `INSERT INTO db(dbname) VALUES($1)`, req.DbName)
-	case "DELETE":
-		conn.Exec(r.Ctx, `DELETE FROM db WHERE dbanme=$1 CASCADE;`, req.DbName)
+		switch req.Operation {
+		case "Add":
+			conn.Exec(r.Ctx, `INSERT INTO db(dbname) VALUES($1)`, req.DbName)
+		case "DELETE":
+			conn.Exec(r.Ctx, `DELETE FROM db WHERE dbanme=$1 CASCADE;`, req.DbName)
+		}
 	}
 }
 

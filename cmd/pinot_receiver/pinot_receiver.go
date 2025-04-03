@@ -337,8 +337,3 @@ func (r *PinotReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg 
 	*logMsg = "[INFO]: Successfully inserted batch!"
 	return nil
 }
-
-func (r *PinotReceiver) HandleSyncMetric() {
-	req := <-r.SyncChannel
-	log.Println("[INFO]: handle Sync Request", req)
-}

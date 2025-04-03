@@ -145,8 +145,3 @@ func (r *S3Receiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *st
 
 	return nil
 }
-
-func (r *S3Receiver) HandleSyncMetric() {
-	req := <-r.SyncChannel
-	log.Println("[INFO]: handle Sync Request", req)
-}

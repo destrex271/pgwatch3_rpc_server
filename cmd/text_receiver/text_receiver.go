@@ -55,8 +55,3 @@ func (r TextReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *s
 
 	return nil
 }
-
-func (r TextReceiver) HandleSyncMetric() {
-	req := <-r.SyncChannel
-	log.Println("[INFO]: handled Sync Request", req)
-}
