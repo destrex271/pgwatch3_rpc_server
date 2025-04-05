@@ -16,6 +16,12 @@ import (
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
 )
 
+type AuthenticatedEnvelope struct {
+	Token   string
+	Payload *api.MeasurementEnvelope
+}
+
+
 type ClickHouseReceiver struct {
 	Ctx  context.Context
 	Conn driver.Conn
@@ -156,7 +162,15 @@ func (r *ClickHouseReceiver) InsertMeasurements(data *api.MeasurementEnvelope, c
 	return nil
 }
 
-func (r *ClickHouseReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
+func (r *ClickHouseReceiver) UpdateMeasurements(authMsg *AuthenticatedEnvelope, logMsg *string) error {
+	expectedToken := os.Getenv("AUTH_TOKEN")
+
+	if expectedToken != "" && authMsg.Token != expectedToken {
+		*logMsg = "unauthorized: invalid auth token"
+		return errors.New(*logMsg)
+	}
+
+	msg := authMsg.Payload
 
 	if len(msg.DBName) == 0 {
 		*logMsg = "empty database name"
@@ -183,6 +197,7 @@ func (r *ClickHouseReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, lo
 	*logMsg = "[INFO]: Successfully inserted batch!"
 	return nil
 }
+
 
 func (r *ClickHouseReceiver) HandleSyncMetric() {
 	req := <-r.SyncChannel
