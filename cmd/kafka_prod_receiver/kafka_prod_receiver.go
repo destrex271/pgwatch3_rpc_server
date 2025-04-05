@@ -11,6 +11,14 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
+type AuthenticatedEnvelope struct {
+	Token   string
+	Payload *api.MeasurementEnvelope
+}
+
+
+
+
 type KafkaProdReceiver struct {
 	conn_regisrty map[string]*kafka.Conn
 	uri           string
@@ -80,7 +88,17 @@ func (r *KafkaProdReceiver) CloseConnectionForDB(dbName string) error {
 	return nil
 }
 
-func (r *KafkaProdReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
+func (r *KafkaProdReceiver) UpdateMeasurements(authMsg *AuthenticatedEnvelope, msg *api.MeasurementEnvelope, logMsg *string) error {
+
+	expectedToken := os.Getenv("AUTH_TOKEN")
+	if expectedToken != "" && authMsg.Token != expectedToken {
+		*logMsg = "unauthorized: invalid auth token"
+		return errors.New(*logMsg)
+	}
+	
+	msg := authMsg.Payload
+
+
 	// Kafka Recv
 	if len(msg.DBName) == 0 {
 		*logMsg = "Empty Database"
