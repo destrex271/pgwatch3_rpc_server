@@ -1,0 +1,5 @@
+export AUTH_TOKEN="secretKey"
+export user="DBuser"
+export password="password"
+export dbname="DBname"
+export server="localhost: portNumber"
