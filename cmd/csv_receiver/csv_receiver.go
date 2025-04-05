@@ -10,6 +10,11 @@ import (
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
 )
 
+type AuthenticatedEnvelope struct {
+	Token   string
+	Payload *api.MeasurementEnvelope
+}
+
 type CSVReceiver struct {
 	FullPath string
 	sinks.SyncMetricHandler
@@ -33,7 +38,16 @@ func NewCSVReceiver(fullPath string) (tr *CSVReceiver) {
 	return tr
 }
 
-func (r CSVReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
+func (r CSVReceiver) UpdateMeasurements(authMsg *AuthenticatedEnvelope, msg *api.MeasurementEnvelope, logMsg *string) error {
+	expectedToken := os.Getenv("AUTH_TOKEN")
+	if expectedToken != "" && authMsg.Token != expectedToken {
+		*logMsg = "unauthorized: invalid auth token"
+		return errors.New(*logMsg)
+	} 
+
+	msg := authMsg.Payload
+
+
 	if len(msg.DBName) == 0 {
 		return errors.New("Empty Database")
 	}
