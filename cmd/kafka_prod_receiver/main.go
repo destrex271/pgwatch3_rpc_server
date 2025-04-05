@@ -23,7 +23,7 @@ func main() {
 		return
 	}
 
-	var server sinks.Receiver
+	// var server sinks.Receiver
 	server, err := NewKafkaProducer(*kafkaHost, nil, nil, *autoadd)
 	if err != nil {
 		log.Println("[ERROR]: Unable to create Kafka Producer ", err)
