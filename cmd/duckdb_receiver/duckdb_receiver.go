@@ -14,6 +14,14 @@ import (
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
 )
 
+
+type AuthenticatedEnvelope struct {
+	Token   string
+	Payload *api.MeasurementEnvelope
+}
+
+
+
 type DuckDBReceiver struct {
 	Ctx       context.Context
 	Conn      *sql.DB
@@ -108,21 +116,23 @@ func (r *DuckDBReceiver) InsertMeasurements(data *api.MeasurementEnvelope, ctx c
 	return nil
 }
 
-func (r *DuckDBReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
+func (r *DuckDBReceiver) UpdateMeasurements(authMsg *AuthenticatedEnvelope, logMsg *string) error {
+	expectedToken := os.Getenv("AUTH_TOKEN")
+	if expectedToken != "" && authMsg.Token != expectedToken {
+		*logMsg = "unauthorized: invalid auth token"
+		return errors.New(*logMsg)
+	}
 
-	log.Printf("Received measurement. DBName: '%s', MetricName: '%s', DataPoints: %d",
-		msg.DBName, msg.MetricName, len(msg.Data))
+	msg := authMsg.Payload
 
 	if len(msg.DBName) == 0 {
 		*logMsg = "empty database name"
 		return errors.New(*logMsg)
 	}
-
 	if len(msg.MetricName) == 0 {
 		*logMsg = "empty metric name"
 		return errors.New(*logMsg)
 	}
-
 	if len(msg.Data) == 0 {
 		*logMsg = "no measurements"
 		return errors.New(*logMsg)
@@ -138,6 +148,7 @@ func (r *DuckDBReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg
 	*logMsg = "[INFO]: Successfully inserted batch!"
 	return nil
 }
+
 
 func (r *DuckDBReceiver) HandleSyncMetric() {
 	req := <-r.SyncChannel
