@@ -3,10 +3,8 @@ package main
 import (
 	"flag"
 	"log"
-	"net"
-	"net/http"
-	"net/rpc"
 
+	"github.com/destrex271/pgwatch3_rpc_server/sinks"
 	_ "github.com/marcboeker/go-duckdb"
 )
 
@@ -22,22 +20,10 @@ func main() {
 		return
 	}
 
-	dbr, err := NewDBDuckReceiver(*dbPath, *tableName)
+	server, err := NewDBDuckReceiver(*dbPath, *tableName)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	rpc.RegisterName("Receiver", dbr) // Primary Receiver
-	log.Println("[INFO]: DuckDB Receiver Initialized with database:", *dbPath)
-	log.Println("[INFO]: Registered Receiver")
-	rpc.HandleHTTP()
-
-	listener, err := net.Listen("tcp", "0.0.0.0:"+*port)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	http.Serve(listener, nil)
-
+	sinks.Listen(server, *port)
 }

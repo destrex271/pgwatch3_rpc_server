@@ -3,9 +3,8 @@ package main
 import (
 	"flag"
 	"log"
-	"net"
-	"net/http"
-	"net/rpc"
+
+	"github.com/destrex271/pgwatch3_rpc_server/sinks"
 )
 
 func main() {
@@ -21,15 +20,5 @@ func main() {
 
 	server := NewParquetReceiver(*StorageFolder)
 
-	rpc.RegisterName("Receiver", server)
-	log.Println("[INFO]: Registered Receiver")
-	rpc.HandleHTTP()
-
-	listener, err := net.Listen("tcp", "0.0.0.0:"+*port)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	http.Serve(listener, nil)
+	sinks.Listen(server, *port)	
 }

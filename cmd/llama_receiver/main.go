@@ -4,9 +4,6 @@ import (
 	"context"
 	"flag"
 	"log"
-	"net"
-	"net/http"
-	"net/rpc"
 	"os"
 	"os/exec"
 
@@ -34,16 +31,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	rpc.RegisterName("Receiver", server) // Primary Receiver
-	log.Println("[INFO]: Registered Receiver")
-	rpc.HandleHTTP()
-
-	listener, err := net.Listen("tcp", "0.0.0.0:"+*port)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	if *enableAPI {
 		go func() {
 			os.Setenv("pgURI", *pgURI)
@@ -59,5 +46,5 @@ func main() {
 
 	}
 
-	http.Serve(listener, nil)
+	sinks.Listen(server, *port)
 }
