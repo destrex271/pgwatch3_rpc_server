@@ -20,12 +20,19 @@ type KafkaProdReceiver struct {
 
 // Handle Sync Metric Instructions
 func (r *KafkaProdReceiver) HandleSyncMetric() {
-	req := <-r.SyncChannel
-	switch req.Operation {
-	case "DELETE":
-		r.CloseConnectionForDB(req.DbName)
-	case "ADD":
-		r.AddTopicIfNotExists(req.DbName)
+	for {
+		req, ok := r.GetSyncChannelContent()
+		if !ok {
+			// channel has been closed
+			return
+		}
+
+		switch req.Operation {
+		case "DELETE":
+			r.CloseConnectionForDB(req.DbName)
+		case "ADD":
+			r.AddTopicIfNotExists(req.DbName)
+		}
 	}
 }
 

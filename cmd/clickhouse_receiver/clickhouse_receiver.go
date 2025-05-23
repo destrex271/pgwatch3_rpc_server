@@ -183,8 +183,3 @@ func (r *ClickHouseReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, lo
 	*logMsg = "[INFO]: Successfully inserted batch!"
 	return nil
 }
-
-func (r *ClickHouseReceiver) HandleSyncMetric() {
-	req := <-r.SyncChannel
-	log.Println("[INFO]: handle Sync Request", req)
-}

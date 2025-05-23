@@ -138,8 +138,3 @@ func (r *DuckDBReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg
 	*logMsg = "[INFO]: Successfully inserted batch!"
 	return nil
 }
-
-func (r *DuckDBReceiver) HandleSyncMetric() {
-	req := <-r.SyncChannel
-	log.Println("[INFO]: handle Sync Request", req)
-}

@@ -2,6 +2,7 @@ package sinks
 
 import (
 	"testing"
+	"time"
 
 	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/stretchr/testify/assert"
@@ -94,4 +95,25 @@ func TestSyncMetric_EmptyMetric(t *testing.T) {
 	response := new(string)
 	err := handler.SyncMetric(data, response)
 	assert.EqualError(t, err, "Empty Metric Provided.")
+}
+
+func TestHandleSyncMetric(t *testing.T) {
+	handler := NewSyncMetricHandler(1024)
+	// handler routine
+	go handler.HandleSyncMetric()
+
+	logMsg := "test msg"
+	req := &api.RPCSyncRequest{
+		DbName:     "test_database",
+		MetricName: "test_metric",
+		Operation:  "test_op",
+	}
+
+	for range 10 {
+		// issue a channel write
+		handler.SyncMetric(req, &logMsg)
+		time.Sleep(10 * time.Millisecond)
+		// Ensure the Channel has been emptied
+		assert.Equal(t, len(handler.SyncChannel), 0)
+	}
 }

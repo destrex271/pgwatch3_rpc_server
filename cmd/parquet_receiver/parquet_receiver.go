@@ -27,10 +27,14 @@ type ParquetSchema struct {
 }
 
 func NewParquetReceiver(fullPath string) *ParquetReceiver {
-	return &ParquetReceiver{
+	pr := &ParquetReceiver{
 		FullPath:          fullPath,
 		SyncMetricHandler: sinks.NewSyncMetricHandler(1024),
 	}
+
+	go pr.HandleSyncMetric()
+
+	return pr
 }
 
 func (r ParquetReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {

@@ -3,6 +3,7 @@ package sinks
 import (
 	"errors"
 	"time"
+	"log"
 
 	"github.com/cybertec-postgresql/pgwatch/v3/api"
 )
@@ -42,7 +43,22 @@ func (handler SyncMetricHandler) SyncMetric(syncReq *api.RPCSyncRequest, logMsg 
 	}
 }
 
-func (handler SyncMetricHandler) GetSyncChannelContent() api.RPCSyncRequest {
-	content := <-handler.SyncChannel
-	return content
+func (handler SyncMetricHandler) GetSyncChannelContent() (api.RPCSyncRequest, bool) {
+	content, ok := <-handler.SyncChannel
+	return content, ok
+}
+
+// default HandleSyncMetric() clears the channel
+// in case of the SyncMetric() requests are not 
+// handled by the listening receiver
+func (handler SyncMetricHandler) HandleSyncMetric() {
+	for {
+		req, ok := handler.GetSyncChannelContent()
+		if !ok {
+			// channel is closed
+			return
+		}
+
+		log.Println("[INFO]: handle Sync Request", req)
+	}
 }
