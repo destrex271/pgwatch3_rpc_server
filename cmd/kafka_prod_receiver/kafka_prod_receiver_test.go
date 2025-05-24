@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/stretchr/testify/assert"
@@ -18,7 +19,7 @@ func initContainer(ctx context.Context) (testcontainers.Container, error) {
 		ContainerRequest: testcontainers.ContainerRequest{
 			Image:        "apache/kafka:latest",
 			ExposedPorts: []string{"9092:9092"},
-			WaitingFor:   wait.ForListeningPort("9092"),
+			WaitingFor:   wait.ForLog("Kafka Server started").WithStartupTimeout(120 * time.Second),
 			WorkingDir:   "/opt/kafka/bin/",
 		},
 		Started: true,
