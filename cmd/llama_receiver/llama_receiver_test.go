@@ -272,7 +272,7 @@ func TestUpdateMeasurements_VALID(t *testing.T) {
 
 	// Check insights table for new entry
 	newInsightsCount := 0
-	time.Sleep(90 * time.Second)
+	time.Sleep(150 * time.Second)
 	err = conn.QueryRow(recv.Ctx, "SELECT COUNT(*) FROM insights;").Scan(&newInsightsCount)
 	if err != nil {
 		t.Fatal(err)
@@ -346,7 +346,7 @@ func TestUpdateMeasurements_VALID_Multiple(t *testing.T) {
 
 	newInsightsCount := 0
 	t.Log("waiting.....")
-	time.Sleep(60 * time.Second) // Wait for 7 seconds to allow llm to generate stuff
+	time.Sleep(150 * time.Second) // Wait to allow llm to generate stuff
 	t.Log("waiting done")
 	err = conn.QueryRow(recv.Ctx, "SELECT COUNT(*) FROM insights;").Scan(&newInsightsCount)
 	if err != nil {
