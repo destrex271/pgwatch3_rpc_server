@@ -12,7 +12,7 @@ func getTestRPCSyncRequest() *api.RPCSyncRequest {
 	return &api.RPCSyncRequest{
 		DbName:     "test_database",
 		MetricName: "test_metric",
-		Operation:  "ADD",
+		Operation:  api.AddOp,
 	}
 }
 
@@ -43,7 +43,7 @@ func TestSyncMetric_ValidData(t *testing.T) {
 	assert.Nil(t, err, "Encoutnered an Error")
 }
 
-func TestSyncMetric_EmptyOperation(t *testing.T) {
+func TestSyncMetric_InvalidOperation(t *testing.T) {
 	chan_len := 1024
 	// Get new handler
 	handler := NewSyncMetricHandler(chan_len)
@@ -53,12 +53,12 @@ func TestSyncMetric_EmptyOperation(t *testing.T) {
 	assert.Equal(t, cap(handler.SyncChannel), chan_len, "Channel not of expected length")
 
 	data := getTestRPCSyncRequest()
-	data.Operation = ""
+	data.Operation = -1 
 
-	// Send data to Sync Metric Handler and check if it returns any errosr
+	// Send data to Sync Metric Handler and check if it returns any error
 	response := new(string)
 	err := handler.SyncMetric(data, response)
-	assert.EqualError(t, err, "Empty Operation.")
+	assert.EqualError(t, err, "Invalid Operation type.")
 }
 
 func TestSyncMetric_EmptyDatabase(t *testing.T) {
@@ -103,15 +103,9 @@ func TestHandleSyncMetric(t *testing.T) {
 	go handler.HandleSyncMetric()
 
 	logMsg := "test msg"
-	req := &api.RPCSyncRequest{
-		DbName:     "test_database",
-		MetricName: "test_metric",
-		Operation:  "test_op",
-	}
-
 	for range 10 {
 		// issue a channel write
-		handler.SyncMetric(req, &logMsg)
+		handler.SyncMetric(getTestRPCSyncRequest(), &logMsg)
 		time.Sleep(10 * time.Millisecond)
 		// Ensure the Channel has been emptied
 		assert.Equal(t, len(handler.SyncChannel), 0)
