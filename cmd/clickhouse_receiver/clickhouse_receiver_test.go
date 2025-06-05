@@ -17,7 +17,7 @@ func initContainer(ctx context.Context, user string, password string, dbname str
 	req := testcontainers.ContainerRequest{
 		Image:        "clickhouse/clickhouse-server:24.7",
 		ExposedPorts: []string{"9000/tcp"},
-		WaitingFor:   wait.ForListeningPort("9000/tcp"),
+		WaitingFor:   wait.ForLog("Logging errors to").WithStartupTimeout(2 * time.Minute),
 		Env: map[string]string{
 			"CLICKHOUSE_DB":       dbname,
 			"CLICKHOUSE_USER":     user,
