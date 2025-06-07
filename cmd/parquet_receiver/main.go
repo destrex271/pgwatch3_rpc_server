@@ -10,7 +10,6 @@ import (
 func main() {
 	port := flag.String("port", "-1", "Specify the port where you want your sink to receive the measurements on.")
 	StorageFolder := flag.String("rootFolder", ".", "Only for formats like CSV...\n")
-
 	flag.Parse()
 
 	if *port == "-1" {
@@ -19,6 +18,7 @@ func main() {
 	}
 
 	server := NewParquetReceiver(*StorageFolder)
-
-	sinks.Listen(server, *port)	
+	if err := sinks.Listen(server, *port); err != nil {
+		log.Fatal(err)
+	}
 }

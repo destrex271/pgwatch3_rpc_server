@@ -84,5 +84,7 @@ func main() {
 
 	log.Println("[INFO]: Pinot Receiver Initialized")
 
-	sinks.Listen(server, *port)	
+	if err := sinks.Listen(server, *port); err != nil {
+		log.Fatal(err)
+	}
 }

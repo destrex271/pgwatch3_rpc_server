@@ -9,9 +9,6 @@ import (
 )
 
 func main() {
-
-	// Important Flags
-	// receiverType := flag.String("type", "", "The type of sink that you want to keep this node as.\nAvailable options:\n\t- csv\n\t- text\n\t- parquet")
 	port := flag.String("port", "-1", "Specify the port where you want your sink to receive the measurements on.")
 	awsEndpoint := flag.String("awsEndpoint", "", "Specify aws endpoint")
 	awsRegion := flag.String("awsRegion", "us-east-1", "Specify AWS region")
@@ -27,8 +24,10 @@ func main() {
 	var server sinks.Receiver
 	server, err := NewS3Receiver(*awsEndpoint, *awsRegion, username, password)
 	if err != nil {
-		log.Fatal("[ERROR]: Unable to setup receiver")
+		log.Fatal("[ERROR]: Unable to create S3 receiver", err)
 	}
 
-	sinks.Listen(server, *port)	
+	if err := sinks.Listen(server, *port); err != nil {
+		log.Fatal(err)
+	}
 }

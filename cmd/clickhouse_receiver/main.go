@@ -9,8 +9,6 @@ import (
 )
 
 func main() {
-
-	// Important Flags
 	port := flag.String("port", "-1", "Specify the port where you want your sink to receive the measurements on.")
 	flag.Parse()
 
@@ -24,11 +22,12 @@ func main() {
 	password := os.Getenv("password")
 	serverURI := os.Getenv("server")
 	dbname := os.Getenv("dbname")
-	log.Println(user, password, serverURI)
 	server, err := NewClickHouseReceiver(user, password, dbname, serverURI, false)
 	if err != nil {
 		log.Fatal("[ERROR]: Unable to create Click house receiver: ", err)
 	}
 
-	sinks.Listen(server, *port)
+	if err = sinks.Listen(server, *port); err != nil {
+		log.Fatal(err)
+	}
 }
