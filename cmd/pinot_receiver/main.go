@@ -4,12 +4,11 @@ import (
 	"encoding/json"
 	"flag"
 	"log"
-	"net"
-	"net/http"
-	"net/rpc"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/destrex271/pgwatch3_rpc_server/sinks"
 )
 
 func main() {
@@ -85,16 +84,7 @@ func main() {
 
 	log.Println("[INFO]: Pinot Receiver Initialized")
 
-	rpc.RegisterName("Receiver", server) // Primary Receiver
-	log.Println("[INFO]: Registered Receiver")
-	rpc.HandleHTTP()
-
-	listener, err := net.Listen("tcp", "0.0.0.0:"+*port)
-	if err != nil {
-		log.Fatalf("[ERROR]: Failed to start listener: %v", err)
-		return
+	if err := sinks.Listen(server, *port); err != nil {
+		log.Fatal(err)
 	}
-
-	log.Printf("[INFO]: Server started, listening on port %s", *port)
-	http.Serve(listener, nil)
 }
