@@ -28,9 +28,9 @@ func (r *KafkaProdReceiver) HandleSyncMetric() {
 		}
 
 		switch req.Operation {
-		case "DELETE":
+		case api.DeleteOp:
 			r.CloseConnectionForDB(req.DbName)
-		case "ADD":
+		case api.AddOp:
 			r.AddTopicIfNotExists(req.DbName)
 		}
 	}

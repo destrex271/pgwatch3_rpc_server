@@ -120,9 +120,9 @@ func (r *LlamaReceiver) HandleSyncMetric() {
 		defer conn.Release()
 
 		switch req.Operation {
-		case "Add":
+		case api.AddOp:
 			conn.Exec(r.Ctx, `INSERT INTO db(dbname) VALUES($1)`, req.DbName)
-		case "DELETE":
+		case api.DeleteOp:
 			conn.Exec(r.Ctx, `DELETE FROM db WHERE dbanme=$1 CASCADE;`, req.DbName)
 		}
 	}

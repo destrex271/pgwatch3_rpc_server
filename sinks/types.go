@@ -25,8 +25,8 @@ func NewSyncMetricHandler(chanSize int) SyncMetricHandler {
 }
 
 func (handler SyncMetricHandler) SyncMetric(syncReq *api.RPCSyncRequest, logMsg *string) error {
-	if len(syncReq.Operation) == 0 {
-		return errors.New("Empty Operation.")
+	if syncReq.Operation != api.AddOp && syncReq.Operation != api.DeleteOp {
+		return errors.New("Invalid Operation type.")
 	}
 	if len(syncReq.DbName) == 0 {
 		return errors.New("Empty Database.")
