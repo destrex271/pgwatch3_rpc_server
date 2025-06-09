@@ -21,6 +21,7 @@ require (
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/google/flatbuffers v25.1.24+incompatible // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.3 // indirect
+	github.com/jessevdk/go-flags v1.6.1 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.9 // indirect
 	github.com/moby/go-archive v0.1.0 // indirect
