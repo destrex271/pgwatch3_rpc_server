@@ -11,7 +11,7 @@ import (
 )
 
 type Options struct {
-    Port int `short:"p" long:"port" description:"Port number to listen on" required:"true"`
+    Port string `short:"p" long:"port" description:"Port number to listen on" required:"true"`
 	ServerCrtPath string `long:"server-cert-path" description:"Server TLS Certificate path" env:"SERVER_CERT" required:"true"`
 	ServerKeyPath string `long:"server-key-path" description:"Server TLS Private key file path" env:"SERVER_KEY" required:"true"`
 }
@@ -30,7 +30,7 @@ func Listen(server Receiver, opts *Options) (err error) {
 		Certificates: []tls.Certificate{cert},
 	}
 
-	listener, err := tls.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", opts.Port), tlsConfig)
+	listener, err := tls.Listen("tcp", fmt.Sprintf("0.0.0.0:%s", opts.Port), tlsConfig)
 	if err != nil {
 		return 
 	}

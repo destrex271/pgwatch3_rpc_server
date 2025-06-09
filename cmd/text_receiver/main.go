@@ -1,24 +1,25 @@
 package main
 
 import (
-	"flag"
 	"log"
 
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
+    "github.com/jessevdk/go-flags"
 )
 
+type CmdOpts struct {
+	ServerOptions *sinks.Options `group:"Server Options"`
+    StorageFolder string `short:"s" long:"storage-folder" description:"Folder to store data in" default:"./"`
+}
+
 func main() {
-	port := flag.String("port", "-1", "Specify the port where you want your sink to receive the measurements on.")
-	StorageFolder := flag.String("rootFolder", ".", "Only for formats like CSV...\n")
-	flag.Parse()
+    var opts CmdOpts
+    if _, err := flags.Parse(&opts); err != nil {
+        return
+    }
 
-	if *port == "-1" {
-		log.Println("[ERROR]: No Port Specified")
-		return
-	}
-
-	server := NewTextReceiver(*StorageFolder)
-	if err := sinks.Listen(server, *port); err != nil {
-		log.Fatal(err)
-	}
+    server := NewTextReceiver(opts.StorageFolder)
+    if err := sinks.Listen(server, opts.ServerOptions); err != nil {
+        log.Fatal(err)
+    }
 }
