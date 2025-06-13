@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
+	"net/http"
 	"net/rpc"
 	"os"
 
@@ -19,17 +21,29 @@ func GetJson[K map[string]string | map[string]any | float64 | api.MeasurementEnv
 	return string(jsonString)
 }
 
-func Listen(server Receiver, port string) (err error) {
-	if err = rpc.RegisterName("Receiver", server); err != nil {
-		return 
+func Listen(server Receiver, port string) error {
+	if err := rpc.RegisterName("Receiver", server); err != nil {
+		return err
 	}
 
-	ServerCrtPath := os.Getenv("SERVER_CERT")
-	ServerKeyPath := os.Getenv("SERVER_KEY")
+	ServerCrtPath := os.Getenv("RPC_SERVER_CERT")
+	ServerKeyPath := os.Getenv("RPC_SERVER_KEY")
 
+	if ServerCrtPath  == "" || ServerKeyPath == "" {
+		// Listen Without TLS
+		rpc.HandleHTTP()
+		listener, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%s", port))
+		if err != nil {
+			return err
+		}
+		log.Println("[INFO]: Registered Receiver")
+		return http.Serve(listener, nil)
+	}
+
+	// Listen With TLS
 	cert, err := tls.LoadX509KeyPair(ServerCrtPath, ServerKeyPath)
 	if err != nil {
-		return 
+		return fmt.Errorf("[ERROR]: error loading server certificates: %s", err)
 	}
 
 	tlsConfig := &tls.Config{
@@ -38,9 +52,9 @@ func Listen(server Receiver, port string) (err error) {
 
 	listener, err := tls.Listen("tcp", fmt.Sprintf("0.0.0.0:%s", port), tlsConfig)
 	if err != nil {
-		return 
+		return err
 	}
-	log.Println("[INFO]: Registered Receiver")
+	log.Println("[INFO]: Registered Receiver with TLS")
 
 	for {
 		conn, err := listener.Accept()
