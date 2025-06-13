@@ -22,7 +22,8 @@ func GetJson[K map[string]string | map[string]any | float64 | api.MeasurementEnv
 }
 
 func Listen(server Receiver, port string) error {
-	if err := rpc.RegisterName("Receiver", server); err != nil {
+	rpcServer := rpc.NewServer()
+	if err := rpcServer.RegisterName("Receiver", server); err != nil {
 		return err
 	}
 
@@ -31,7 +32,7 @@ func Listen(server Receiver, port string) error {
 
 	if ServerCrtPath  == "" || ServerKeyPath == "" {
 		// Listen Without TLS
-		rpc.HandleHTTP()
+		rpcServer.HandleHTTP(rpc.DefaultRPCPath, rpc.DefaultDebugPath)
 		listener, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%s", port))
 		if err != nil {
 			return err
@@ -62,6 +63,6 @@ func Listen(server Receiver, port string) error {
 			log.Printf("Error accepting connection: %v", err)
 			continue
 		}
-		go rpc.ServeConn(conn)
+		go rpcServer.ServeConn(conn)
 	}
 }
