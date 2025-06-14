@@ -74,7 +74,7 @@ func TestNewS3Receiver(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer provider.Close()
+	defer func() {_ = provider.Close()}()
 
 	host, err := provider.DaemonHost(ctx)
 	if err != nil {
@@ -110,7 +110,7 @@ func TestAddDatabase(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer provider.Close()
+	defer func() {_ = provider.Close()}()
 
 	host, err := provider.DaemonHost(ctx)
 	if err != nil {
@@ -123,7 +123,8 @@ func TestAddDatabase(t *testing.T) {
 	assert.NotNil(t, client, "received nil instead of client")
 
 	dbname := "test-db"
-	client.AddDatabase(dbname)
+	err = client.AddDatabase(dbname)
+	assert.NoError(t, err)
 
 	res, err := client.DBExists(dbname)
 
@@ -153,7 +154,7 @@ func TestUpdateMeasurements_VALID(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer provider.Close()
+	defer func() {_ = provider.Close()}()
 
 	host, err := provider.DaemonHost(ctx)
 	if err != nil {
@@ -194,7 +195,7 @@ func TestUpdateMeasurements_EMPTYDB(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer provider.Close()
+	defer func() {_ = provider.Close()}()
 
 	host, err := provider.DaemonHost(ctx)
 	if err != nil {
@@ -236,7 +237,7 @@ func TestUpdateMeasurements_EMPTY_METRIC_NAME(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer provider.Close()
+	defer func() {_ = provider.Close()}()
 
 	host, err := provider.DaemonHost(ctx)
 	if err != nil {
@@ -278,7 +279,7 @@ func TestUpdateMeasurements_EMPTY_METRICS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer provider.Close()
+	defer func() {_ = provider.Close()}()
 
 	host, err := provider.DaemonHost(ctx)
 	if err != nil {

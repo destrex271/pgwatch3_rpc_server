@@ -35,13 +35,13 @@ func NewCSVReceiver(fullPath string) (tr *CSVReceiver) {
 
 func (r CSVReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
 	if len(msg.DBName) == 0 {
-		return errors.New("Empty Database")
+		return errors.New("empty database")
 	}
 
 	// Open/Create Output file
 	superFolder := msg.DBName
 	if len(msg.MetricName) == 0 {
-		return errors.New("Unidentifiable Metric Name: EMPTY")
+		return errors.New("unidentifiable metric name: EMPTY")
 	}
 	fileName := msg.MetricName + ".csv"
 

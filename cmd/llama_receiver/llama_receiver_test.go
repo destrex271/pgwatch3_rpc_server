@@ -32,7 +32,7 @@ func initOllamaContainer(ctx context.Context) (*tcollama.OllamaContainer, error)
 			log.Println("unable to pull llama3: " + err.Error())
 			return nil, err
 		}
-		ollamaContainer.Commit(ctx, new_image)
+		_ = ollamaContainer.Commit(ctx, new_image)
 	}
 
 	return ollamaContainer, nil

@@ -41,7 +41,7 @@ func mockHTTPServer() *httptest.Server {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"success"}`))
+		_, _ = w.Write([]byte(`{"status":"success"}`))
 	})
 
 	return httptest.NewServer(handler)
@@ -93,7 +93,7 @@ func setupTestConfigDir(t *testing.T) (string, func()) {
 	assert.NoError(t, err, "Failed to write table.json")
 
 	cleanup := func() {
-		os.RemoveAll(tempDir)
+		_ = os.RemoveAll(tempDir)
 	}
 
 	return tempDir, cleanup
@@ -154,14 +154,14 @@ func TestInitializePinotTable(t *testing.T) {
 	configDir, cleanup := setupTestConfigDir(t)
 	defer cleanup()
 
-	receiver, err := NewPinotReceiver(server.URL, "pgwatch_metrics", configDir)
+	_, err := NewPinotReceiver(server.URL, "pgwatch_metrics", configDir)
 	assert.NoError(t, err, "NewPinotReceiver should initialize without error")
 
 	// Test is already covered by initialization, but we can add additional test cases:
 
 	// Test with missing schema file
-	os.Remove(filepath.Join(configDir, "schema.json"))
-	receiver = &PinotReceiver{
+	_ = os.Remove(filepath.Join(configDir, "schema.json"))
+	receiver := &PinotReceiver{
 		ControllerURL:     server.URL,
 		TableName:         "pgwatch_metrics",
 		ConfigDir:         configDir,

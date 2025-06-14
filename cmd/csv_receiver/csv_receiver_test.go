@@ -71,7 +71,7 @@ func TestUpdateMeasurements_CSV_ValidData(t *testing.T) {
 	assert.FileExists(t, fullPath+"/"+msg.DBName+"/"+msg.MetricName+".csv", "CSV file not found for metric")
 
 	// Cleanup
-	os.RemoveAll(fullPath + "/" + msg.DBName)
+	_ = os.RemoveAll(fullPath + "/" + msg.DBName)
 }
 
 func TestUpdateMeasurements_CSV_EmptyDBName(t *testing.T) {
@@ -96,7 +96,7 @@ func TestUpdateMeasurements_CSV_EmptyDBName(t *testing.T) {
 	err = recv.UpdateMeasurements(msg, logMsg)
 
 	assert.NotNil(t, err, "No error thrown for empty Database Name")
-	assert.EqualError(t, err, "Empty Database", "Invalid Error Message")
+	assert.EqualError(t, err, "empty database", "Invalid Error Message")
 }
 
 func TestUpdateMeasurements_CSV_EmptyMetricName(t *testing.T) {
@@ -120,5 +120,5 @@ func TestUpdateMeasurements_CSV_EmptyMetricName(t *testing.T) {
 	err = recv.UpdateMeasurements(msg, logMsg)
 
 	assert.NotNil(t, err, "No error thrown for empty Metric Name")
-	assert.EqualError(t, err, "Unidentifiable Metric Name: EMPTY", "Invalid Error Message for empty metric name")
+	assert.EqualError(t, err, "unidentifiable metric name: EMPTY", "Invalid Error Message for empty metric name")
 }

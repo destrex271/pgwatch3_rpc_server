@@ -66,7 +66,7 @@ func TestNewKafkaProducer(t *testing.T) {
 	container, err := initContainer(context.Background())
 	defer func() {
 		t.Log("Terminating test container")
-		container.Terminate(context.Background())
+		_ = container.Terminate(context.Background())
 	}()
 
 	if err != nil {
@@ -86,7 +86,7 @@ func TestUpdateMeasurements_KAFKA_ValidData(t *testing.T) {
 	container, err := initContainer(context.Background())
 	defer func() {
 		t.Log("Terminating test container...")
-		container.Terminate(context.Background())
+		_ = container.Terminate(context.Background())
 	}()
 
 	if err != nil {
@@ -106,10 +106,10 @@ func TestUpdateMeasurements_KAFKA_ValidData(t *testing.T) {
 	// Check if connection was succesfully established
 	assert.Nil(t, err, "Error encoutered while adding new measurements")
 
-	// Try to consume data added to topicc
+	// Try to consume data added to topic
 	cmd := []string{"timeout", "10s", "/opt/kafka/bin/kafka-console-consumer.sh", "--bootstrap-server", "localhost:9092", "--topic", "test", "--from-beginning"}
 	_, reader, err := container.Exec(context.Background(), cmd)
-	// _, reader, err := container.Exec(context.Background(), []string{"ls"})
+	assert.NoError(t, err)
 
 	buf := new(strings.Builder)
 	_, err = io.Copy(buf, reader)
@@ -120,6 +120,7 @@ func TestUpdateMeasurements_KAFKA_ValidData(t *testing.T) {
 	// See the logs from the command execution.
 	t.Log(buf)
 	msg_as_str, err := json.Marshal(msg)
+	assert.NoError(t, err)
 	assert.True(t, strings.Contains(buf.String(), string(msg_as_str)), "Unable to retrieve measurements from topic")
 }
 
@@ -128,7 +129,7 @@ func TestUpdateMeasurements_KAFKA_EmptyDatabase(t *testing.T) {
 	container, err := initContainer(context.Background())
 	defer func() {
 		t.Log("Terminating test container")
-		container.Terminate(context.Background())
+		_ = container.Terminate(context.Background())
 	}()
 
 	if err != nil {
@@ -156,7 +157,7 @@ func TestUpdateMeasurements_KAFKA_EmptyMetricName(t *testing.T) {
 	container, err := initContainer(context.Background())
 	defer func() {
 		t.Log("Terminating test container")
-		container.Terminate(context.Background())
+		_ = container.Terminate(context.Background())
 	}()
 
 	if err != nil {

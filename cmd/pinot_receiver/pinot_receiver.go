@@ -141,7 +141,7 @@ func (r *PinotReceiver) uploadSchema(schemaPath string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() {_ = resp.Body.Close()}()
 
 	// Check response
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
@@ -187,7 +187,7 @@ func (r *PinotReceiver) createTable(tableConfigPath string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() {_ = resp.Body.Close()}()
 
 	// Check response (table might already exist, which is fine)
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
@@ -228,13 +228,13 @@ func (r *PinotReceiver) insertData(dbName, metricName string, data, customTags, 
 	if err != nil {
 		return fmt.Errorf("failed to create temp file: %v", err)
 	}
-	defer os.Remove(tempFile.Name())
-	defer tempFile.Close()
+	defer func() {_ = os.Remove(tempFile.Name())}()
+	defer func() {_ = tempFile.Close()}()
 
 	if _, err := tempFile.Write(jsonData); err != nil {
 		return fmt.Errorf("failed to write to temp file: %v", err)
 	}
-	tempFile.Close() // Close the file before reading it
+	_ = tempFile.Close() // Close the file before reading it
 
 	// Create a buffer to hold the multipart form data
 	var buffer bytes.Buffer
@@ -245,7 +245,7 @@ func (r *PinotReceiver) insertData(dbName, metricName string, data, customTags, 
 	if err != nil {
 		return fmt.Errorf("failed to open temp file: %v", err)
 	}
-	defer fileReader.Close()
+	defer func() {_ = fileReader.Close()}()
 
 	// Add the file to the form
 	filePart, err := writer.CreateFormFile("file", "data.json")
@@ -281,7 +281,7 @@ func (r *PinotReceiver) insertData(dbName, metricName string, data, customTags, 
 	if err != nil {
 		return fmt.Errorf("failed to send request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {_ = resp.Body.Close()}()
 
 	// Read and log the response
 	body, _ := io.ReadAll(resp.Body)

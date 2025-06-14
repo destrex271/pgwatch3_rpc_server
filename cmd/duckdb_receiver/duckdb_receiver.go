@@ -73,16 +73,16 @@ func (r *DuckDBReceiver) InsertMeasurements(data *api.MeasurementEnvelope, ctx c
 		" (dbname, metric_name, data, custom_tags, metric_def, timestamp) VALUES (?, ?, ?, ?, ?, ?)")
 	if err != nil {
 		log.Printf("error from preparing statement: %v", err)
-		tx.Rollback()
+		_ = tx.Rollback()
 		return err
 	}
-	defer stmt.Close()
+	defer func() {_ = stmt.Close()}()
 
 	for _, measurement := range data.Data {
 		measurementJSON, err := json.Marshal(measurement)
 		if err != nil {
 			log.Printf("error from marshal measurement: %v", err)
-			tx.Rollback()
+			_ = tx.Rollback()
 			return err
 		}
 
@@ -96,7 +96,7 @@ func (r *DuckDBReceiver) InsertMeasurements(data *api.MeasurementEnvelope, ctx c
 		)
 		if err != nil {
 			log.Printf("error from insert: %v", err)
-			tx.Rollback()
+			_ = tx.Rollback()
 			return err
 		}
 	}

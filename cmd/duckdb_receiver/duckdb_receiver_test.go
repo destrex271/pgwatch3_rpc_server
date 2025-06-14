@@ -45,7 +45,6 @@ func getMeasurementEnvelope() *api.MeasurementEnvelope {
 const TEST_DATABASE_NAME string = "pgwatch_test.duckdb"
 
 var testDBPath string
-var dbReceiver *DuckDBReceiver
 
 func TestMain(m *testing.M) {
 	currentDir, err := os.Getwd()
@@ -66,8 +65,8 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 
 	// cleanup
-	os.Remove(testDBPath)
-	os.Remove(testDir)
+	_ = os.Remove(testDBPath)
+	_ = os.Remove(testDir)
 	os.Exit(code)
 }
 
@@ -98,7 +97,7 @@ func TestInitialize(t *testing.T) {
 	// assert the table creation
 	rows, err := db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name='measurements'")
 	assert.Nil(t, err, "could not to query tables")
-	defer rows.Close()
+	defer func() {_ = rows.Close()}()
 	tableExists := rows.Next()
 	assert.True(t, tableExists, "Measurements table was not created")
 
@@ -106,7 +105,7 @@ func TestInitialize(t *testing.T) {
 	// note - pk and notnull are not INT types but bool types in duckdb
 	columns, err := db.Query("PRAGMA table_info(measurements)")
 	assert.Nil(t, err, "Failed to get table information")
-	defer columns.Close()
+	defer func() {_ = columns.Close()}()
 	columnNames := make(map[string]bool)
 	for columns.Next() {
 		var cid int
@@ -131,7 +130,7 @@ func TestUpdateMeasurements_ValidData(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	defer dbr.Conn.Close()
+	defer func() {_ = dbr.Conn.Close()}()
 	// Call Update Measurements with dummy packet
 	msg := getMeasurementEnvelope()
 	logMsg := new(string)
@@ -147,7 +146,7 @@ func TestUpdateMeasurements_ValidData(t *testing.T) {
 	// verify data was inserted
 	rows, err := dbr.Conn.Query("SELECT dbname, metric_name FROM measurements")
 	assert.Nil(t, err, "Failed to query database")
-	defer rows.Close()
+	defer func(){_ = rows.Close()}()
 
 	rowCount := 0
 	for rows.Next() {
@@ -164,7 +163,7 @@ func TestUpdateMeasurements_EMPTY_DBNAME(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	defer dbr.Conn.Close()
+	defer func() {_ = dbr.Conn.Close()}()
 
 	msg := getMeasurementEnvelope()
 	msg.DBName = ""
@@ -182,7 +181,7 @@ func TestUpdateMeasurements_EMPTY_METRICNAME(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	defer dbr.Conn.Close()
+	defer func() {_ = dbr.Conn.Close()}()
 
 	msg := getMeasurementEnvelope()
 	msg.MetricName = ""
@@ -200,7 +199,7 @@ func TestUpdateMeasurements_EMPTY_DATA(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	defer dbr.Conn.Close()
+	defer func() {_ = dbr.Conn.Close()}()
 
 	msg := getMeasurementEnvelope()
 	msg.Data = []map[string]any{}

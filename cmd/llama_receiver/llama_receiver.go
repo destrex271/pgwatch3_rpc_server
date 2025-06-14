@@ -121,9 +121,13 @@ func (r *LlamaReceiver) HandleSyncMetric() {
 
 		switch req.Operation {
 		case api.AddOp:
-			conn.Exec(r.Ctx, `INSERT INTO db(dbname) VALUES($1)`, req.DbName)
+			_, err = conn.Exec(r.Ctx, `INSERT INTO db(dbname) VALUES($1)`, req.DbName)
 		case api.DeleteOp:
-			conn.Exec(r.Ctx, `DELETE FROM db WHERE dbanme=$1 CASCADE;`, req.DbName)
+			_, err = conn.Exec(r.Ctx, `DELETE FROM db WHERE dbanme=$1 CASCADE;`, req.DbName)
+		}
+
+		if err != nil {
+			log.Printf("[ERROR] error handling LLama SyncMetric operation: %s", err)
 		}
 	}
 }
@@ -396,7 +400,7 @@ func (r *LlamaReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg 
 				go func(val *api.MeasurementEnvelope) {
 					r.mu.Lock()
 					defer r.mu.Unlock()
-					r.GenerateInsights(*val)
+					_ = r.GenerateInsights(*val)
 				}(val)
 			}
 		}
