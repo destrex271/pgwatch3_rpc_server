@@ -40,7 +40,7 @@ func (r TextReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *s
 	}
 
 	writer := bufio.NewWriter(file)
-	defer file.Close()
+	defer func() {_ = file.Close()}()
 
 	output := "DBName: " + msg.DBName + "\n" + "Metric: " + msg.MetricName + "\n"
 
@@ -50,8 +50,9 @@ func (r TextReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *s
 
 	output += "\n===================================\n"
 
-	fmt.Fprintln(writer, output)
-	writer.Flush()
-
-	return nil
+	_, err = fmt.Fprintln(writer, output)
+	if err != nil {
+		return err
+	}
+	return writer.Flush()
 }
