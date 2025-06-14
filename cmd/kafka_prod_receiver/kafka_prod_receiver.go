@@ -27,11 +27,16 @@ func (r *KafkaProdReceiver) HandleSyncMetric() {
 			return
 		}
 
+		var err error
 		switch req.Operation {
 		case api.DeleteOp:
-			r.CloseConnectionForDB(req.DbName)
+			err = r.CloseConnectionForDB(req.DbName)
 		case api.AddOp:
-			r.AddTopicIfNotExists(req.DbName)
+			err = r.AddTopicIfNotExists(req.DbName)
+		}
+
+		if err != nil {
+			log.Printf("[ERROR] error handling Kafka SyncMetric operation: %s", err)
 		}
 	}
 }
