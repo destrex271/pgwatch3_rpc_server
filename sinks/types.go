@@ -26,20 +26,20 @@ func NewSyncMetricHandler(chanSize int) SyncMetricHandler {
 
 func (handler SyncMetricHandler) SyncMetric(syncReq *api.RPCSyncRequest, logMsg *string) error {
 	if syncReq.Operation != api.AddOp && syncReq.Operation != api.DeleteOp {
-		return errors.New("Invalid Operation type.")
+		return errors.New("invalid operation type")
 	}
 	if len(syncReq.DbName) == 0 {
-		return errors.New("Empty Database.")
+		return errors.New("empty database")
 	}
 	if len(syncReq.MetricName) == 0 {
-		return errors.New("Empty Metric Provided.")
+		return errors.New("empty metric provided")
 	}
 
 	select {
 	case handler.SyncChannel <- *syncReq:
 		return nil
 	case <-time.After(5 * time.Second):
-		return errors.New("Timeout while trying to sync metric")
+		return errors.New("timeout while trying to sync metric")
 	}
 }
 
