@@ -41,22 +41,22 @@ func (r ParquetReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg
 
 	if len(msg.DBName) == 0 {
 		*logMsg = "False Record delieverd"
-		return errors.New("Empty Database")
+		return errors.New("empty database")
 	}
 
 	if len(msg.MetricName) == 0 {
 		*logMsg = "False Record delievered"
-		return errors.New("Empty Metric Name")
+		return errors.New("empty metric name")
 	}
 
 	filename := msg.DBName + ".parquet"
 
 	// Create temporary storage and buffer storage
 	buffer_path := r.FullPath + "/parquet_readings"
-	os.MkdirAll(buffer_path, os.ModePerm)
+	_ = os.MkdirAll(buffer_path, os.ModePerm)
 
 	if _, err := os.Stat(buffer_path + "/" + filename); errors.Is(err, os.ErrNotExist) {
-		os.Create(buffer_path + "/" + filename)
+		_, _ = os.Create(buffer_path + "/" + filename)
 		log.Println("[INFO]: Created File")
 	}
 
