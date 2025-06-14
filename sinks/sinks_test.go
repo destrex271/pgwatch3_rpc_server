@@ -86,7 +86,9 @@ func getTestRPCSyncRequest() *api.RPCSyncRequest {
 
 func TestHTTPListener(t *testing.T) {
 	server := NewSink()
-	go Listen(server, ServerPort)
+	go func() {
+		_ = Listen(server, ServerPort)
+	}()
 	time.Sleep(time.Second)
 
 	w := NewRPCWriter(false)
@@ -96,9 +98,11 @@ func TestHTTPListener(t *testing.T) {
 
 func TestTLSListener(t *testing.T) {
 	server := NewSink()
-	os.Setenv("RPC_SERVER_KEY", ServerKey)
-	os.Setenv("RPC_SERVER_CERT", ServerCert)
-	go Listen(server, TLSServerPort)
+	_ = os.Setenv("RPC_SERVER_KEY", ServerKey)
+	_ = os.Setenv("RPC_SERVER_CERT", ServerCert)
+	go func() {
+		Listen(server, TLSServerPort)
+	}()
 	time.Sleep(time.Second)
 
 	tw := NewRPCWriter(true)
