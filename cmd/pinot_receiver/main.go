@@ -32,7 +32,7 @@ func main() {
 	}
 
 	// Simple URL fix - handle port-only case and add http:// if needed
-	if strings.Contains(*pinotControllerURL, ".") == false && strings.Contains(*pinotControllerURL, ":") == false {
+	if !strings.Contains(*pinotControllerURL, ".") && !strings.Contains(*pinotControllerURL, ":") {
 		// Just a port number
 		*pinotControllerURL = "http://localhost:" + *pinotControllerURL
 	} else if !strings.HasPrefix(*pinotControllerURL, "http") {
