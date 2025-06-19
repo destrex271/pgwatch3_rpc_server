@@ -58,7 +58,7 @@ func TestSyncMetric_InvalidOperation(t *testing.T) {
 	// Send data to Sync Metric Handler and check if it returns any error
 	response := new(string)
 	err := handler.SyncMetric(data, response)
-	assert.EqualError(t, err, "Invalid Operation type.")
+	assert.EqualError(t, err, "invalid operation type")
 }
 
 func TestSyncMetric_EmptyDatabase(t *testing.T) {
@@ -76,7 +76,7 @@ func TestSyncMetric_EmptyDatabase(t *testing.T) {
 	// Send data to Sync Metric Handler and check if it returns any errosr
 	response := new(string)
 	err := handler.SyncMetric(data, response)
-	assert.EqualError(t, err, "Empty Database.")
+	assert.EqualError(t, err, "empty database")
 }
 
 func TestSyncMetric_EmptyMetric(t *testing.T) {
@@ -94,7 +94,7 @@ func TestSyncMetric_EmptyMetric(t *testing.T) {
 	// Send data to Sync Metric Handler and check if it returns any errosr
 	response := new(string)
 	err := handler.SyncMetric(data, response)
-	assert.EqualError(t, err, "Empty Metric Provided.")
+	assert.EqualError(t, err, "empty metric provided")
 }
 
 func TestHandleSyncMetric(t *testing.T) {
@@ -105,7 +105,7 @@ func TestHandleSyncMetric(t *testing.T) {
 	logMsg := "test msg"
 	for range 10 {
 		// issue a channel write
-		handler.SyncMetric(getTestRPCSyncRequest(), &logMsg)
+		_ = handler.SyncMetric(getTestRPCSyncRequest(), &logMsg)
 		time.Sleep(10 * time.Millisecond)
 		// Ensure the Channel has been emptied
 		assert.Equal(t, len(handler.SyncChannel), 0)
