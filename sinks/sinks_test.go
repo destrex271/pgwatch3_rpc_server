@@ -101,7 +101,7 @@ func TestTLSListener(t *testing.T) {
 	_ = os.Setenv("RPC_SERVER_KEY", ServerKey)
 	_ = os.Setenv("RPC_SERVER_CERT", ServerCert)
 	go func() {
-		Listen(server, TLSServerPort)
+		_ = Listen(server, TLSServerPort)
 	}()
 	time.Sleep(time.Second)
 
