@@ -64,7 +64,7 @@ func TestUpdateMeasurements_PARQ(t *testing.T) {
 	assert.FileExists(t, fullPath+"/parquet_readings/"+msg.DBName+".parquet", "CSV file not found for metric")
 
 	// Cleanup
-	os.RemoveAll(fullPath + "/parquet_readings")
+	_ = os.RemoveAll(fullPath + "/parquet_readings")
 }
 
 func TestUpdateMeasurements_PARQ_EmptyDBName(t *testing.T) {
@@ -84,7 +84,7 @@ func TestUpdateMeasurements_PARQ_EmptyDBName(t *testing.T) {
 	err = recv.UpdateMeasurements(msg, logMsg)
 
 	// Check if there were any errors while updating measurements
-	assert.EqualError(t, err, "Empty Database", "Error Message not thrown for empty database name")
+	assert.EqualError(t, err, "empty database", "Error Message not thrown for empty database name")
 
 	// Check if directories were not created
 	if _, err := os.Stat(fullPath + "/parquet_readings"); err != nil {
@@ -109,7 +109,7 @@ func TestUpdateMeasurements_PARQ_EmptyMetricName(t *testing.T) {
 	err = recv.UpdateMeasurements(msg, logMsg)
 
 	// Check if there were any errors while updating measurements
-	assert.EqualError(t, err, "Empty Metric Name", "Error Message not thrown for empty metric name")
+	assert.EqualError(t, err, "empty metric name", "Error Message not thrown for empty metric name")
 
 	// Check if directories were not created
 	if _, err := os.Stat(fullPath + "/parquet_readings"); err != nil {

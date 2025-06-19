@@ -31,7 +31,7 @@ func main() {
 
 	if *enableAPI {
 		go func() {
-			os.Setenv("pgURI", *pgURI)
+			_ = os.Setenv("pgURI", *pgURI)
 			cmnd := exec.Command("./cmd/llama_receiver/backend/main")
 			log.Println(cmnd)
 			err = cmnd.Start()

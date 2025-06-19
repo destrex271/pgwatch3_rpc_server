@@ -15,8 +15,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  Lint:
+    runs-on: ubuntu-latest
+    steps:  
 
-  test:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Golang
+        uses: actions/setup-go@v5
+
+      - name: GolangCI-Lint 
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: latest
+
+  Test:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
