@@ -21,7 +21,7 @@ func GetJson[K map[string]string | map[string]any | float64 | api.MeasurementEnv
 	return string(jsonString)
 }
 
-func Listen(server Receiver, port string) error {
+func Listen(server any, port string) error {
 	rpcServer := rpc.NewServer()
 	if err := rpcServer.RegisterName("Receiver", server); err != nil {
 		return err

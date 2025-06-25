@@ -17,7 +17,7 @@ func main() {
 		return
 	}
 
-	server := NewTextReceiver(*StorageFolder)
+	server := sinks.NewAuthWrapper(NewTextReceiver(*StorageFolder))
 	if err := sinks.Listen(server, *port); err != nil {
 		log.Fatal(err)
 	}
