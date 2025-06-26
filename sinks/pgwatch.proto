@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+import "google/protobuf/any.proto";
+option go_package = ".;sinks";
+
+service Receiver {
+    rpc UpdateMeasurements(MeasurementEnvelope) returns (Reply);
+    rpc SyncMetric(SyncReq) returns (Reply);
+}
+
+message Reply {
+    string logmsg = 1;
+}
+
+message MeasurementEnvelope {
+    string DBName = 1;
+	string SourceType = 2;
+	string MetricName = 3;
+    map<string, string> CustomTags = 4;
+	repeated Measurement Data = 5;
+    Metric MetricDef = 6;
+	string RealDbname = 7;
+	string SystemIdentifier = 8;
+}
+
+message Metric {
+        map<int32, string> SQLs = 1;
+		string InitSQL = 2; 
+		string NodeStatus = 3;
+		repeated string Gauges = 4;
+		bool IsInstanceLevel = 5;
+		string StorageName = 6;
+		string Description = 7;
+}
+
+message Measurement {
+    map<string, google.protobuf.Any> data = 1;
+}
+
+message SyncReq {
+    string DbName = 1;
+	string MetricName = 2;
+	SyncOp Operation = 3;
+}
+
+enum SyncOp {
+    AddOp = 0;
+    DeleteOp = 1;
+    InvalidOp = 2;
+}
