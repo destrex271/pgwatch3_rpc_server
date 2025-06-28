@@ -66,12 +66,17 @@ func NewRPCWriter(TLS bool) *Writer {
 	return &Writer{client: rpc.NewClient(conn)}
 }
 
-func (w *Writer) Write() string {
+func (w *Writer) Write(username, password string) (string, error) {
 	var logMsg string
-	if err := w.client.Call("Receiver.UpdateMeasurements", &api.MeasurementEnvelope{}, &logMsg); err != nil {
-		panic(err)
+	if err := w.client.Call("Receiver.UpdateMeasurements", &EnvelopeWrapper{
+		RPCServerCreds: RPCServerCreds{
+			Username: username,
+			Password: password,
+		},
+	}, &logMsg); err != nil {
+		return "", err
 	}	
-	return logMsg
+	return logMsg, nil
 }
 
 func getTestRPCSyncRequest() *api.RPCSyncRequest {
@@ -86,28 +91,62 @@ func getTestRPCSyncRequest() *api.RPCSyncRequest {
 
 func TestHTTPListener(t *testing.T) {
 	server := NewSink()
+
+	username := "pgwatch"
+	password := "pgwatch"
+	_ = os.Setenv("RPC_USERNAME", username)
+	_ = os.Setenv("RPC_PASSWORD", password)
+
 	go func() {
-		_ = Listen(server, ServerPort)
+		err := Listen(server, ServerPort)
+		assert.NoError(t, err)
 	}()
 	time.Sleep(time.Second)
 
 	w := NewRPCWriter(false)
-	logMsg := w.Write()
+	logMsg, err := w.Write(username, password)
+	assert.NoError(t, err)
 	assert.Equal(t, "Measurements Updated", logMsg)
+
+	_, err = w.Write(username, "")
+	assert.Error(t, err)
+
+	_, err = w.Write("", password)
+	assert.Error(t, err)
+
+	_, err = w.Write("", "")
+	assert.Error(t, err)
 }
 
 func TestTLSListener(t *testing.T) {
 	server := NewSink()
+
+	username := "pgwatch"
+	password := "pgwatch"
+	_ = os.Setenv("RPC_USERNAME", username)
+	_ = os.Setenv("RPC_PASSWORD", password)
 	_ = os.Setenv("RPC_SERVER_KEY", ServerKey)
 	_ = os.Setenv("RPC_SERVER_CERT", ServerCert)
+
 	go func() {
-		_ = Listen(server, TLSServerPort)
+		err := Listen(server, TLSServerPort)
+		assert.NoError(t, err)
 	}()
 	time.Sleep(time.Second)
 
 	tw := NewRPCWriter(true)
-	logMsg := tw.Write()
+	logMsg, err := tw.Write(username, password)
+	assert.NoError(t, err)
 	assert.Equal(t, "Measurements Updated", logMsg)
+
+	_, err = tw.Write(username, "")
+	assert.Error(t, err)
+
+	_, err = tw.Write("", password)
+	assert.Error(t, err)
+
+	_, err = tw.Write("", "")
+	assert.Error(t, err)
 }
 
 func TestNewSyncMetricHandler(t *testing.T) {
