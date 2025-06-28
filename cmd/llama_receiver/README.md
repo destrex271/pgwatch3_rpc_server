@@ -20,5 +20,5 @@ This sink example demonstrates how along with stroing measurements, we can also 
 
 ./cmd/llama_receiver/setup.sh # To start ollama docker image
 
-go run ./cmd/llama_receiver --port=<port_number_for_sink> --serverURI=<ollama_server_uri> --pgURI=<pgURI> --batchSize=10
+go run ./cmd/llama_receiver --port=<port_number_for_sink> --ollamaURI=<ollama_server_uri> --pgURI=<pgURI> --batchSize=10
 ```
