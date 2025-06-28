@@ -89,7 +89,7 @@ func getMeasurementEnvelope() *api.MeasurementEnvelope {
 	}
 }
 
-func TestNewLlamaReceiver(t *testing.T) {
+func TestNewLLamaReceiver(t *testing.T) {
 	ctx := context.Background()
 
 	ollamaContainer, err := initOllamaContainer(ctx)
@@ -124,7 +124,7 @@ func TestNewLlamaReceiver(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx, 10)
+	recv, err := NewLLamaReceiver(connectionStr, pgConnectionStr, ctx, 10)
 
 	assert.NotNil(t, recv, "Receiver object is nil")
 	assert.Nil(t, err, "Error encountered while creating receiver")
@@ -165,7 +165,7 @@ func TestSetupTables(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx, 10)
+	recv, err := NewLLamaReceiver(connectionStr, pgConnectionStr, ctx, 10)
 
 	assert.NotNil(t, recv, "Receiver object is nil")
 	assert.Nil(t, err, "Error encountered while creating receiver")
@@ -194,11 +194,11 @@ func TestSetupTables(t *testing.T) {
 	// Check postgres for Measurement table
 	err = conn.QueryRow(recv.Ctx, `SELECT EXISTS (
 		SELECT FROM information_schema.tables 
-		WHERE  table_name   = 'measurement'
+		WHERE  table_name   = 'measurements'
     );`).Scan(&doesExist)
 
 	assert.Nil(t, err, "error encountered while querying table")
-	assert.True(t, doesExist, "table Measurement does not exist")
+	assert.True(t, doesExist, "table Measurements does not exist")
 
 	// Check postgres for Insights
 	err = conn.QueryRow(recv.Ctx, `SELECT EXISTS (
@@ -245,7 +245,7 @@ func TestUpdateMeasurements_VALID(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx, 1)
+	recv, err := NewLLamaReceiver(connectionStr, pgConnectionStr, ctx, 1)
 
 	assert.NotNil(t, recv, "Receiver object is nil")
 	assert.Nil(t, err, "Error encountered while creating receiver")
@@ -272,7 +272,7 @@ func TestUpdateMeasurements_VALID(t *testing.T) {
 
 	// Check insights table for new entry
 	newInsightsCount := 0
-	time.Sleep(150 * time.Second)
+	recv.InsightsGenerationWg.Wait()
 	err = conn.QueryRow(recv.Ctx, "SELECT COUNT(*) FROM insights;").Scan(&newInsightsCount)
 	if err != nil {
 		t.Fatal(err)
@@ -317,7 +317,7 @@ func TestUpdateMeasurements_VALID_Multiple(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx, 1)
+	recv, err := NewLLamaReceiver(connectionStr, pgConnectionStr, ctx, 1)
 
 	assert.NotNil(t, recv, "Receiver object is nil")
 	assert.Nil(t, err, "Error encountered while creating receiver")
@@ -346,7 +346,7 @@ func TestUpdateMeasurements_VALID_Multiple(t *testing.T) {
 
 	newInsightsCount := 0
 	t.Log("waiting.....")
-	time.Sleep(150 * time.Second) // Wait to allow llm to generate stuff
+	recv.InsightsGenerationWg.Wait()
 	t.Log("waiting done")
 	err = conn.QueryRow(recv.Ctx, "SELECT COUNT(*) FROM insights;").Scan(&newInsightsCount)
 	if err != nil {
@@ -390,7 +390,7 @@ func TestUpdateMeasurements_EMPTYDB(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx, 10)
+	recv, err := NewLLamaReceiver(connectionStr, pgConnectionStr, ctx, 10)
 
 	assert.NotNil(t, recv, "Receiver object is nil")
 	assert.Nil(t, err, "Error encountered while creating receiver")
@@ -440,7 +440,7 @@ func TestUpdateMeasurements_EMPTY_METRICNAME(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx, 10)
+	recv, err := NewLLamaReceiver(connectionStr, pgConnectionStr, ctx, 10)
 
 	assert.NotNil(t, recv, "Receiver object is nil")
 	assert.Nil(t, err, "Error encountered while creating receiver")
@@ -490,7 +490,7 @@ func TestUpdateMeasurements_EMPTY_DATA(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx, 10)
+	recv, err := NewLLamaReceiver(connectionStr, pgConnectionStr, ctx, 10)
 
 	assert.NotNil(t, recv, "Receiver object is nil")
 	assert.Nil(t, err, "Error encountered while creating receiver")

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -35,31 +34,29 @@ Present your insights and recommendations in bullet points, prioritizing the mos
 Be concise in your output. Your ourput should not exceed 200 words.
 `
 
-type Batch map[string][]*api.MeasurementEnvelope
-
-type LlamaReceiver struct {
+type LLamaReceiver struct {
 	Client    *talkative.Client
 	Context   string
 	Ctx       context.Context
 	ServerURI string
 	ConnPool  *pgxpool.Pool
-	MsmtBatch Batch
+	MsmtBatch []*api.MeasurementEnvelope
 	BatchSize int
-	mu        sync.Mutex
+	mu sync.Mutex
 	MsCount   int
+	InsightsGenerationWg *sync.WaitGroup
 	sinks.SyncMetricHandler
 }
 
 type MeasurementsData struct {
-	DbID       uint
-	MetricName string
+	metricName string
 	data       string
 }
 
-func NewLlamaReceiver(llmServerURI string, pgURI string, ctx context.Context, batchSize int) (recv *LlamaReceiver, err error) {
-	client, err := talkative.New(llmServerURI)
+func NewLLamaReceiver(LLamaServerURI string, pgURI string, ctx context.Context, batchSize int) (recv *LLamaReceiver, err error) {
+	client, err := talkative.New(LLamaServerURI)
 	if err != nil {
-		log.Println("[ERROR]: unable to initialize llm client")
+		log.Println("[ERROR]: unable to initialize llama client")
 		return nil, err
 	}
 
@@ -71,8 +68,8 @@ func NewLlamaReceiver(llmServerURI string, pgURI string, ctx context.Context, ba
 	}
 
 	pgxpool_config.MaxConns = 25
-	pgxpool_config.MaxConnLifetime = 5 * time.Minute
-	pgxpool_config.MaxConnIdleTime = 15 * time.Minute
+	pgxpool_config.MaxConnLifetime = 15 * time.Minute
+	pgxpool_config.MaxConnIdleTime = 5 * time.Minute
 
 	pool, err := pgxpool.NewWithConfig(ctx, pgxpool_config)
 	if err != nil {
@@ -80,16 +77,17 @@ func NewLlamaReceiver(llmServerURI string, pgURI string, ctx context.Context, ba
 		return nil, err
 	}
 
-	recv = &LlamaReceiver{
+	recv = &LLamaReceiver{
 		Client:            client,
 		Context:           contextString,
 		Ctx:               ctx,
-		ServerURI:         llmServerURI,
+		ServerURI:         LLamaServerURI,
 		ConnPool:          pool,
-		MsmtBatch:         make(Batch),
+		MsmtBatch:         make([]*api.MeasurementEnvelope, 0, batchSize),
 		BatchSize:         batchSize,
 		SyncMetricHandler: sinks.NewSyncMetricHandler(1024),
 		MsCount:           0,
+		InsightsGenerationWg: &sync.WaitGroup{},
 	}
 
 	err = recv.SetupTables()
@@ -103,7 +101,7 @@ func NewLlamaReceiver(llmServerURI string, pgURI string, ctx context.Context, ba
 	return recv, nil
 }
 
-func (r *LlamaReceiver) HandleSyncMetric() {
+func (r *LLamaReceiver) HandleSyncMetric() {
 	for {
 		req, ok := r.GetSyncChannelContent()
 		if !ok {
@@ -132,7 +130,7 @@ func (r *LlamaReceiver) HandleSyncMetric() {
 	}
 }
 
-func (r *LlamaReceiver) SetupTables() error {
+func (r *LLamaReceiver) SetupTables() error {
 	conn, err := r.ConnPool.Acquire(r.Ctx)
 	if err != nil {
 		return errors.New("unable to acquire new connection")
@@ -145,8 +143,8 @@ func (r *LlamaReceiver) SetupTables() error {
 		return err
 	}
 
-	_, err = conn.Exec(r.Ctx, `CREATE TABLE IF NOT EXISTS measurement (
-		created_time TIMESTAMP NOT NULL DEFAULT(NOW() AT TIME ZONE 'UTC'),
+	_, err = conn.Exec(r.Ctx, `CREATE TABLE IF NOT EXISTS measurements (
+		created_at TIMESTAMP NOT NULL DEFAULT(NOW() AT TIME ZONE 'UTC'),
 		data JSONB,
 		metric_name TEXT,
 		database_id SERIAL,
@@ -160,7 +158,7 @@ func (r *LlamaReceiver) SetupTables() error {
 	_, err = conn.Exec(r.Ctx, `CREATE TABLE IF NOT EXISTS insights(
 		insight_data TEXT, 
 		database_id BIGSERIAL, 
-		created_time TIMESTAMP NOT NULL DEFAULT(NOW() AT TIME ZONE 'UTC'),
+		created_at TIMESTAMP NOT NULL DEFAULT(NOW() AT TIME ZONE 'UTC'),
 		FOREIGN KEY (database_id) REFERENCES db(id) 
 	)`)
 	if err != nil {
@@ -171,8 +169,7 @@ func (r *LlamaReceiver) SetupTables() error {
 	return nil
 }
 
-func (r *LlamaReceiver) AddMeasurements(msg *api.MeasurementEnvelope) error {
-
+func (r *LLamaReceiver) AddMeasurements(msg *api.MeasurementEnvelope) error {
 	conn, err := r.ConnPool.Acquire(r.Ctx)
 	if err != nil {
 		return errors.New("unable to acquire new connection")
@@ -180,7 +177,7 @@ func (r *LlamaReceiver) AddMeasurements(msg *api.MeasurementEnvelope) error {
 	defer conn.Release()
 
 	var id int
-	// Try to fecth id
+	// Try to fetch id
 	err = conn.QueryRow(r.Ctx, `SELECT id FROM db WHERE dbname=$1`, msg.DBName).Scan(&id)
 	if err != nil {
 		if err.Error() != "no rows in result set" {
@@ -206,7 +203,7 @@ func (r *LlamaReceiver) AddMeasurements(msg *api.MeasurementEnvelope) error {
 	}
 
 	// insert measurements with current timestamp(default) into table Measurement
-	_, err = conn.Exec(r.Ctx, `INSERT INTO measurement(data, database_id, metric_name) VALUES($1, $2, $3)`, string(jsonData), id, msg.MetricName)
+	_, err = conn.Exec(r.Ctx, `INSERT INTO measurements(data, database_id, metric_name) VALUES($1, $2, $3)`, string(jsonData), id, msg.MetricName)
 	if err != nil {
 		return err
 	}
@@ -214,14 +211,14 @@ func (r *LlamaReceiver) AddMeasurements(msg *api.MeasurementEnvelope) error {
 	return nil
 }
 
-func (r *LlamaReceiver) GetAllMeasurements(dbname string, metric_name string, context_size uint) ([]MeasurementsData, error) {
+func (r *LLamaReceiver) GetAllMeasurements(dbname string, metric_name string, context_size uint) ([]MeasurementsData, error) {
 	conn, err := r.ConnPool.Acquire(r.Ctx)
 	if err != nil {
 		return nil, errors.New("unable to acquire new connection")
 	}
 	defer conn.Release()
 
-	query := "SELECT database_id, metric_name, data FROM measurement INNER JOIN db ON measurement.database_id = db.id WHERE db.dbname = $1 ORDER BY created_time DESC LIMIT $2"
+	query := "SELECT metric_name, data FROM measurements INNER JOIN db ON measurements.database_id = db.id WHERE db.dbname = $1 ORDER BY created_at DESC LIMIT $2"
 	rows, err := conn.Query(r.Ctx, query, dbname, context_size)
 	if err != nil {
 		return nil, err
@@ -231,7 +228,7 @@ func (r *LlamaReceiver) GetAllMeasurements(dbname string, metric_name string, co
 
 	for rows.Next() {
 		var cur_data MeasurementsData
-		err = rows.Scan(&cur_data.DbID, &cur_data.MetricName, &cur_data.data)
+		err = rows.Scan(&cur_data.metricName, &cur_data.data)
 		if err != nil {
 			log.Println(err)
 			continue
@@ -242,7 +239,7 @@ func (r *LlamaReceiver) GetAllMeasurements(dbname string, metric_name string, co
 	return data, nil
 }
 
-func (r *LlamaReceiver) PreparePrompt(dbname string, metric_name string) (string, error) {
+func (r *LLamaReceiver) PreparePrompt(dbname string, metric_name string) (string, error) {
 	all_measurements, err := r.GetAllMeasurements(dbname, metric_name, 10)
 	if err != nil {
 		return "", err
@@ -250,18 +247,18 @@ func (r *LlamaReceiver) PreparePrompt(dbname string, metric_name string) (string
 
 	var data_string string
 	for _, measurement := range all_measurements {
-		data_string += "Metric Name -> " + measurement.MetricName + ": " + measurement.data + ".\n"
+		data_string += "Metric Name -> " + measurement.metricName + ": " + measurement.data + ".\n"
 	}
 
 	final_msg := strings.ReplaceAll(r.Context, "{DATA}", data_string)
 	return final_msg, nil
 }
 
-func (r *LlamaReceiver) GetDbID(dbname string) int {
+func (r *LLamaReceiver) GetDBID(dbname string) (int, error) {
 	conn, err := r.ConnPool.Acquire(r.Ctx)
 	if err != nil {
 		log.Println("[ERROR]: unable to acquire new connection")
-		return -1
+		return 0, err 
 	}
 	defer conn.Release()
 
@@ -270,12 +267,12 @@ func (r *LlamaReceiver) GetDbID(dbname string) int {
 	query := `SELECT id FROM db where dbname=$1`
 	err = conn.QueryRow(r.Ctx, query, dbname).Scan(&id)
 	if err != nil {
-		return -1
+		return 0, err 
 	}
-	return id
+	return id, nil
 }
 
-func (r *LlamaReceiver) AddInsights(dbid int, insights string) error {
+func (r *LLamaReceiver) AddInsights(dbid int, insights string) error {
 	conn, err := r.ConnPool.Acquire(r.Ctx)
 	if err != nil {
 		return errors.New("unable to acquire new connection")
@@ -284,8 +281,6 @@ func (r *LlamaReceiver) AddInsights(dbid int, insights string) error {
 
 	// Insert model response in table insights
 	query := `INSERT INTO insights(database_id, insight_data) VALUES($1, $2)`
-
-	// Execute the query with parameters
 	_, err = conn.Exec(r.Ctx, query, dbid, insights)
 	if err != nil {
 		return fmt.Errorf("failed to execute query: %w", err)
@@ -294,7 +289,7 @@ func (r *LlamaReceiver) AddInsights(dbid int, insights string) error {
 	return nil
 }
 
-func (r *LlamaReceiver) GenerateInsights(msg api.MeasurementEnvelope) error {
+func (r *LLamaReceiver) GenerateInsights(msg *api.MeasurementEnvelope) error {
 	final_msg, err := r.PreparePrompt(msg.DBName, msg.MetricName)
 	if err != nil {
 		return err
@@ -306,7 +301,6 @@ func (r *LlamaReceiver) GenerateInsights(msg api.MeasurementEnvelope) error {
 	callback := func(cr string, err error) {
 		if err != nil {
 			fmt.Println(err)
-
 			return
 		}
 
@@ -333,14 +327,12 @@ func (r *LlamaReceiver) GenerateInsights(msg api.MeasurementEnvelope) error {
 	done, err := r.Client.PlainChat(model, callback, params, message)
 
 	if err != nil {
-		// Unable to start chat
 		return errors.New("unable to send message to client. Please check if your ollama instance is up and running")
 	}
 
 	<-done // wait for the chat to complete
-	log.Println("Completed ->", model_response)
-	id := r.GetDbID(msg.DBName)
-	if id == -1 {
+	id, err := r.GetDBID(msg.DBName)
+	if err != nil {
 		return errors.New("unable to find database in records")
 	}
 
@@ -352,70 +344,49 @@ func (r *LlamaReceiver) GenerateInsights(msg api.MeasurementEnvelope) error {
 	return nil
 }
 
-func (r *LlamaReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
-
-	// Check db name
+func (r *LLamaReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
 	if len(msg.DBName) == 0 {
 		return errors.New("empty database name")
 	}
-
-	// Check Metric name
 	if len(msg.MetricName) == 0 {
 		return errors.New("empty metric name")
 	}
-
-	// Check data length
 	if len(msg.Data) == 0 {
 		return errors.New("empty measurement list")
 	}
 
-	// Mapping to batch measurements according to epoch time
+	// store measurement in pg database
 	err := r.AddMeasurements(msg)
 	if err != nil {
 		return err
 	}
 
 	log.Println("[INFO]: Inserted entry into database")
-	log.Println("[INFO]: Adding to batch")
+	log.Println("[INFO]: Adding entry to batch")
 
-	epochTime := msg.Data[0]["epoch_ns"]
-
-	if epochTime == nil {
-		*logMsg = "epoch time not present! assigning one ourselves"
-		epochTimeStr := strconv.FormatInt(time.Now().Unix(), 10)
-		epochTime = epochTimeStr
-	} else {
-		epochTime = strconv.FormatInt(epochTime.(int64), 10)
-	}
-
-	// Append msg to the appropriate key in MsmtBatch
-	r.MsmtBatch[epochTime.(string)] = append(r.MsmtBatch[epochTime.(string)], msg)
+	// lock to avoid raceing of multiple pgwatch instances
+	r.mu.Lock()
+	r.MsmtBatch = append(r.MsmtBatch, msg)
 	r.MsCount += 1
 
-	// Process metrics if batch size acheived
 	if r.MsCount == r.BatchSize {
 		// Generate insights for measurements of batch set
-		for _, v := range r.MsmtBatch {
-			for _, val := range v {
-				go func(val *api.MeasurementEnvelope) {
-					r.mu.Lock()
-					defer r.mu.Unlock()
-					_ = r.GenerateInsights(*val)
-				}(val)
-			}
+		for _, val := range r.MsmtBatch {
+			r.InsightsGenerationWg.Add(1)
+			go func(val *api.MeasurementEnvelope) {
+				defer r.InsightsGenerationWg.Done()
+				err = r.GenerateInsights(val)
+				if err != nil {
+					log.Printf("Error Generating Insights: %v", err)
+				}
+			}(val)
 		}
 
-		// Delete all entries
-		r.mu.Lock()
-		log.Println("[INFO] : Removing old entries.....")
-		for k := range r.MsmtBatch {
-			delete(r.MsmtBatch, k)
-		}
-		log.Println("[INFO]: Removed entries successfully!")
-		r.mu.Unlock()
-
+		log.Println("[INFO]: Flushing Batch")
+		r.MsmtBatch = r.MsmtBatch[:0]
 		r.MsCount = 0
 	}
+	r.mu.Unlock()
 
 	return nil
 }

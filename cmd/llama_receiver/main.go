@@ -24,7 +24,7 @@ func main() {
 	}
 
 	var server sinks.Receiver
-	server, err := NewLlamaReceiver(*serverURI, *pgURI, context.Background(), *batchSize)
+	server, err := NewLLamaReceiver(*serverURI, *pgURI, context.Background(), *batchSize)
 	if err != nil {
 		log.Fatal(err)
 	}
