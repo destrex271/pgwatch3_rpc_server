@@ -42,6 +42,7 @@ type LLamaReceiver struct {
 	ConnPool  *pgxpool.Pool
 	MsmtBatch []*api.MeasurementEnvelope
 	BatchSize int
+	mu sync.Mutex
 	MsCount   int
 	InsightsGenerationWg *sync.WaitGroup
 	sinks.SyncMetricHandler
@@ -363,6 +364,8 @@ func (r *LLamaReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg 
 	log.Println("[INFO]: Inserted entry into database")
 	log.Println("[INFO]: Adding entry to batch")
 
+	// lock to avoid raceing of multiple pgwatch instances
+	r.mu.Lock()
 	r.MsmtBatch = append(r.MsmtBatch, msg)
 	r.MsCount += 1
 
@@ -383,6 +386,7 @@ func (r *LLamaReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg 
 		r.MsmtBatch = r.MsmtBatch[:0]
 		r.MsCount = 0
 	}
+	r.mu.Unlock()
 
 	return nil
 }
