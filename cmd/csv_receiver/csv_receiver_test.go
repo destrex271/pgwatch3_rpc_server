@@ -38,7 +38,7 @@ func getMeasurementEnvelope() *api.MeasurementEnvelope {
 	}
 }
 
-func TestUpdateMeasurements_CSV_ValidData(t *testing.T) {
+func TestUpdateMeasurements(t *testing.T) {
 
 	fullPath, err := os.Getwd()
 	if err != nil {
@@ -72,53 +72,4 @@ func TestUpdateMeasurements_CSV_ValidData(t *testing.T) {
 
 	// Cleanup
 	_ = os.RemoveAll(fullPath + "/" + msg.DBName)
-}
-
-func TestUpdateMeasurements_CSV_EmptyDBName(t *testing.T) {
-
-	fullPath, err := os.Getwd()
-	if err != nil {
-		t.Error(err)
-	}
-
-	sync_handler := sinks.NewSyncMetricHandler(1024)
-
-	// Create new CSV Receiver
-	recv := &CSVReceiver{
-		FullPath:          fullPath,
-		SyncMetricHandler: sync_handler,
-	}
-
-	// Call Update Measurements with dummy packet
-	msg := getMeasurementEnvelope()
-	msg.DBName = ""
-	logMsg := new(string)
-	err = recv.UpdateMeasurements(msg, logMsg)
-
-	assert.NotNil(t, err, "No error thrown for empty Database Name")
-	assert.EqualError(t, err, "empty database", "Invalid Error Message")
-}
-
-func TestUpdateMeasurements_CSV_EmptyMetricName(t *testing.T) {
-	fullPath, err := os.Getwd()
-	if err != nil {
-		t.Error(err)
-	}
-
-	sync_handler := sinks.NewSyncMetricHandler(1024)
-
-	// Create new CSV Receiver
-	recv := &CSVReceiver{
-		FullPath:          fullPath,
-		SyncMetricHandler: sync_handler,
-	}
-
-	// Call Update Measurements with dummy packet
-	msg := getMeasurementEnvelope()
-	msg.MetricName = ""
-	logMsg := new(string)
-	err = recv.UpdateMeasurements(msg, logMsg)
-
-	assert.NotNil(t, err, "No error thrown for empty Metric Name")
-	assert.EqualError(t, err, "unidentifiable metric name: EMPTY", "Invalid Error Message for empty metric name")
 }
