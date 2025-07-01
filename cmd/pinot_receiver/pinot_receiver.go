@@ -297,23 +297,12 @@ func (r *PinotReceiver) insertData(dbName, metricName string, data, customTags, 
 
 // UpdateMeasurements implements the Receiver interface
 func (r *PinotReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
+	if err := sinks.IsValidMeasurement(msg); err != nil {
+		return  err
+	}
+
 	log.Printf("Received measurement. DBName: '%s', MetricName: '%s', DataPoints: %d",
 		msg.DBName, msg.MetricName, len(msg.Data))
-
-	if len(msg.DBName) == 0 {
-		*logMsg = "empty database name"
-		return errors.New(*logMsg)
-	}
-
-	if len(msg.MetricName) == 0 {
-		*logMsg = "empty metric name"
-		return errors.New(*logMsg)
-	}
-
-	if len(msg.Data) == 0 {
-		*logMsg = "no measurements"
-		return errors.New(*logMsg)
-	}
 
 	// Process each measurement
 	metricDefJSON, _ := json.Marshal(msg.MetricDef)

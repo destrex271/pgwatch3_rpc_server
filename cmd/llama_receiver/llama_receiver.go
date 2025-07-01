@@ -353,20 +353,8 @@ func (r *LlamaReceiver) GenerateInsights(msg api.MeasurementEnvelope) error {
 }
 
 func (r *LlamaReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
-
-	// Check db name
-	if len(msg.DBName) == 0 {
-		return errors.New("empty database name")
-	}
-
-	// Check Metric name
-	if len(msg.MetricName) == 0 {
-		return errors.New("empty metric name")
-	}
-
-	// Check data length
-	if len(msg.Data) == 0 {
-		return errors.New("empty measurement list")
+	if err := sinks.IsValidMeasurement(msg); err != nil {
+		return  err
 	}
 
 	// Mapping to batch measurements according to epoch time

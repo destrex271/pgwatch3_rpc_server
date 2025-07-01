@@ -28,6 +28,9 @@ func NewTextReceiver(fullPath string) (tr *TextReceiver) {
 }
 
 func (r TextReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
+	if err := sinks.IsValidMeasurement(msg); err != nil {
+		return  err
+	}
 
 	// Write Metrics in a text file
 	fileName := msg.DBName + ".txt"

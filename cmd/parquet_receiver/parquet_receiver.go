@@ -38,15 +38,8 @@ func NewParquetReceiver(fullPath string) *ParquetReceiver {
 }
 
 func (r ParquetReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
-
-	if len(msg.DBName) == 0 {
-		*logMsg = "False Record delieverd"
-		return errors.New("empty database")
-	}
-
-	if len(msg.MetricName) == 0 {
-		*logMsg = "False Record delievered"
-		return errors.New("empty metric name")
+	if err := sinks.IsValidMeasurement(msg); err != nil {
+		return  err
 	}
 
 	filename := msg.DBName + ".parquet"
