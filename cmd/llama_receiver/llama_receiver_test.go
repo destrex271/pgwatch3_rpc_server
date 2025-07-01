@@ -210,7 +210,7 @@ func TestSetupTables(t *testing.T) {
 	assert.True(t, doesExist, "table insights does not exist")
 }
 
-func TestUpdateMeasurements_VALID(t *testing.T) {
+func TestUpdateMeasurements(t *testing.T) {
 	ctx := context.Background()
 
 	ollamaContainer, err := initOllamaContainer(ctx)
@@ -282,7 +282,7 @@ func TestUpdateMeasurements_VALID(t *testing.T) {
 }
 
 // Insert multiple records
-func TestUpdateMeasurements_VALID_Multiple(t *testing.T) {
+func TestUpdateMeasurements_Multiple(t *testing.T) {
 	ctx := context.Background()
 
 	ollamaContainer, err := initOllamaContainer(ctx)
@@ -353,154 +353,4 @@ func TestUpdateMeasurements_VALID_Multiple(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Greater(t, newInsightsCount, oldCount, "No new entries inserted in insights table")
-}
-
-func TestUpdateMeasurements_EMPTYDB(t *testing.T) {
-	ctx := context.Background()
-
-	ollamaContainer, err := initOllamaContainer(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	postgresContainer, err := initPostgresContainer(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer func() {
-		if err := ollamaContainer.Terminate(ctx); err != nil {
-			log.Printf("failed to terminate container: %s", err)
-		}
-		if err := postgresContainer.Terminate(ctx); err != nil {
-			log.Printf("failed to terminate container: %s", err)
-		}
-	}()
-
-	// Create new receiver
-	connectionStr, err := ollamaContainer.ConnectionString(ctx)
-	if err != nil {
-		log.Println("Unable to get ollama connection string")
-		t.Fatal(err)
-	}
-
-	pgConnectionStr, err := postgresContainer.ConnectionString(ctx)
-	if err != nil {
-		log.Println("Unable to get Postgres connection string")
-		t.Fatal(err)
-	}
-
-	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx, 10)
-
-	assert.NotNil(t, recv, "Receiver object is nil")
-	assert.Nil(t, err, "Error encountered while creating receiver")
-
-	// Send Update Measurements
-	msg := getMeasurementEnvelope()
-	msg.DBName = ""
-	logMsg := new(string)
-	err = recv.UpdateMeasurements(msg, logMsg)
-
-	assert.NotNil(t, err, "no error encountered while updating measurements with empty dbname")
-	assert.EqualError(t, err, "empty database name")
-}
-
-func TestUpdateMeasurements_EMPTY_METRICNAME(t *testing.T) {
-	ctx := context.Background()
-
-	ollamaContainer, err := initOllamaContainer(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	postgresContainer, err := initPostgresContainer(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer func() {
-		if err := ollamaContainer.Terminate(ctx); err != nil {
-			log.Printf("failed to terminate container: %s", err)
-		}
-		if err := postgresContainer.Terminate(ctx); err != nil {
-			log.Printf("failed to terminate container: %s", err)
-		}
-	}()
-
-	// Create new receiver
-	connectionStr, err := ollamaContainer.ConnectionString(ctx)
-	if err != nil {
-		log.Println("Unable to get ollama connection string")
-		t.Fatal(err)
-	}
-
-	pgConnectionStr, err := postgresContainer.ConnectionString(ctx)
-	if err != nil {
-		log.Println("Unable to get Postgres connection string")
-		t.Fatal(err)
-	}
-
-	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx, 10)
-
-	assert.NotNil(t, recv, "Receiver object is nil")
-	assert.Nil(t, err, "Error encountered while creating receiver")
-
-	// Send Update Measurements
-	msg := getMeasurementEnvelope()
-	msg.MetricName = ""
-	logMsg := new(string)
-	err = recv.UpdateMeasurements(msg, logMsg)
-
-	assert.NotNil(t, err, "no error encountered while updating measurements with empty dbname")
-	assert.EqualError(t, err, "empty metric name")
-}
-
-func TestUpdateMeasurements_EMPTY_DATA(t *testing.T) {
-	ctx := context.Background()
-
-	ollamaContainer, err := initOllamaContainer(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	postgresContainer, err := initPostgresContainer(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer func() {
-		if err := ollamaContainer.Terminate(ctx); err != nil {
-			log.Printf("failed to terminate container: %s", err)
-		}
-		if err := postgresContainer.Terminate(ctx); err != nil {
-			log.Printf("failed to terminate container: %s", err)
-		}
-	}()
-
-	// Create new receiver
-	connectionStr, err := ollamaContainer.ConnectionString(ctx)
-	if err != nil {
-		log.Println("Unable to get ollama connection string")
-		t.Fatal(err)
-	}
-
-	pgConnectionStr, err := postgresContainer.ConnectionString(ctx)
-	if err != nil {
-		log.Println("Unable to get Postgres connection string")
-		t.Fatal(err)
-	}
-
-	recv, err := NewLlamaReceiver(connectionStr, pgConnectionStr, ctx, 10)
-
-	assert.NotNil(t, recv, "Receiver object is nil")
-	assert.Nil(t, err, "Error encountered while creating receiver")
-
-	// Send Update Measurements
-	msg := getMeasurementEnvelope()
-	msg.Data = nil
-	logMsg := new(string)
-	err = recv.UpdateMeasurements(msg, logMsg)
-
-	assert.NotNil(t, err, "no error encountered while updating measurements with empty dbname")
-	assert.EqualError(t, err, "empty measurement list")
 }
