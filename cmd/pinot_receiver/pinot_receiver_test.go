@@ -191,63 +191,6 @@ func TestUpdateMeasurements_ValidData(t *testing.T) {
 	assert.Contains(t, *logMsg, "Successfully inserted batch", "Log message should indicate success")
 }
 
-func TestUpdateMeasurements_EmptyDBName(t *testing.T) {
-	server := mockHTTPServer()
-	defer server.Close()
-
-	configDir, cleanup := setupTestConfigDir(t)
-	defer cleanup()
-
-	receiver, err := NewPinotReceiver(server.URL, "pgwatch_metrics", configDir)
-	assert.NoError(t, err, "NewPinotReceiver should initialize without error")
-
-	// Test empty DB name
-	msg := getMeasurementEnvelope()
-	msg.DBName = ""
-	logMsg := new(string)
-	err = receiver.UpdateMeasurements(msg, logMsg)
-	assert.Error(t, err, "Empty DB name should cause error")
-	assert.Equal(t, "empty database name", *logMsg, "Error message should mention empty database name")
-}
-
-func TestUpdateMeasurements_EmptyMetricName(t *testing.T) {
-	server := mockHTTPServer()
-	defer server.Close()
-
-	configDir, cleanup := setupTestConfigDir(t)
-	defer cleanup()
-
-	receiver, err := NewPinotReceiver(server.URL, "pgwatch_metrics", configDir)
-	assert.NoError(t, err, "NewPinotReceiver should initialize without error")
-
-	// Test empty metric name
-	msg := getMeasurementEnvelope()
-	msg.MetricName = ""
-	logMsg := new(string)
-	err = receiver.UpdateMeasurements(msg, logMsg)
-	assert.Error(t, err, "Empty metric name should cause error")
-	assert.Equal(t, "empty metric name", *logMsg, "Error message should mention empty metric name")
-}
-
-func TestUpdateMeasurements_EmptyData(t *testing.T) {
-	server := mockHTTPServer()
-	defer server.Close()
-
-	configDir, cleanup := setupTestConfigDir(t)
-	defer cleanup()
-
-	receiver, err := NewPinotReceiver(server.URL, "pgwatch_metrics", configDir)
-	assert.NoError(t, err, "NewPinotReceiver should initialize without error")
-
-	// Test empty data
-	msg := getMeasurementEnvelope()
-	msg.Data = []map[string]any{}
-	logMsg := new(string)
-	err = receiver.UpdateMeasurements(msg, logMsg)
-	assert.Error(t, err, "Empty data should cause error")
-	assert.Equal(t, "no measurements", *logMsg, "Error message should mention no measurements")
-}
-
 func TestPinotAPIErrors(t *testing.T) {
 	// Create a server that always returns errors
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

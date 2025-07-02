@@ -205,3 +205,25 @@ func TestHandleSyncMetric(t *testing.T) {
 		assert.Equal(t, len(handler.SyncChannel), 0)
 	}
 }
+
+func TestInvalidMeasurement(t *testing.T) {
+	msg := &api.MeasurementEnvelope{
+		DBName: "",
+	}
+	err := IsValidMeasurement(msg)
+	assert.EqualError(t, err, "empty database name")
+
+	msg = &api.MeasurementEnvelope{
+		DBName: "dummy",
+		MetricName: "",
+	}
+	err = IsValidMeasurement(msg)
+	assert.EqualError(t, err, "empty metric name")
+
+	msg = &api.MeasurementEnvelope{
+		DBName: "dummy",
+		MetricName: "dummy",
+	}
+	err = IsValidMeasurement(msg)
+	assert.EqualError(t, err, "no data provided")
+}

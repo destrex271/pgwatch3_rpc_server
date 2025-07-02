@@ -91,17 +91,8 @@ func (r *S3Receiver) DBExists(bucketName string) (bool, error) {
 }
 
 func (r *S3Receiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
-
-	if len(msg.DBName) == 0 {
-		return errors.New("empty database name")
-	}
-
-	if len(msg.MetricName) == 0 {
-		return errors.New("empty metric name")
-	}
-
-	if len(msg.Data) == 0 {
-		return errors.New("empty data")
+	if err := sinks.IsValidMeasurement(msg); err != nil {
+		return  err
 	}
 
 	exists, err := r.DBExists(msg.DBName)

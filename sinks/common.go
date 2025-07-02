@@ -3,6 +3,7 @@ package sinks
 import (
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -65,4 +66,17 @@ func Listen(server Receiver, port string) error {
 		}
 		go rpcServer.ServeConn(conn)
 	}
+}
+
+func IsValidMeasurement(msg *api.MeasurementEnvelope) error {
+	if len(msg.DBName) == 0 {
+		return errors.New("empty database name")
+	}
+	if len(msg.MetricName) == 0 {
+		return errors.New("empty metric name")
+	}
+	if len(msg.Data) == 0 {
+		return errors.New("no data provided")
+	}
+	return nil
 }

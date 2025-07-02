@@ -345,14 +345,8 @@ func (r *LLamaReceiver) GenerateInsights(msg *api.MeasurementEnvelope) error {
 }
 
 func (r *LLamaReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
-	if len(msg.DBName) == 0 {
-		return errors.New("empty database name")
-	}
-	if len(msg.MetricName) == 0 {
-		return errors.New("empty metric name")
-	}
-	if len(msg.Data) == 0 {
-		return errors.New("empty measurement list")
+	if err := sinks.IsValidMeasurement(msg); err != nil {
+		return  err
 	}
 
 	// store measurement in pg database

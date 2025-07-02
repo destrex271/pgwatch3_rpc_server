@@ -81,7 +81,7 @@ func TestNewKafkaProducer(t *testing.T) {
 	assert.NotNil(t, kpr, "Kafka Producer created")
 }
 
-func TestUpdateMeasurements_KAFKA_ValidData(t *testing.T) {
+func TestUpdateMeasurements(t *testing.T) {
 	// Create new Producer
 	container, err := initContainer(context.Background())
 	defer func() {
@@ -122,60 +122,4 @@ func TestUpdateMeasurements_KAFKA_ValidData(t *testing.T) {
 	msg_as_str, err := json.Marshal(msg)
 	assert.NoError(t, err)
 	assert.True(t, strings.Contains(buf.String(), string(msg_as_str)), "Unable to retrieve measurements from topic")
-}
-
-func TestUpdateMeasurements_KAFKA_EmptyDatabase(t *testing.T) {
-	// Create new Producer
-	container, err := initContainer(context.Background())
-	defer func() {
-		t.Log("Terminating test container")
-		_ = container.Terminate(context.Background())
-	}()
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	kpr, err := NewKafkaProducer("localhost:9092", nil, nil, true)
-
-	assert.Nil(t, err, "Error encountered while create new kafka producer")
-	assert.NotNil(t, kpr, "Kafka Producer created")
-
-	// Send dummy measurement to kafka topic
-	msg := getMeasurementEnvelope()
-	msg.DBName = ""
-	logMsg := new(string)
-	err = kpr.UpdateMeasurements(msg, logMsg)
-
-	// Check if connection was succesfully established
-	assert.NotNil(t, err, "No error generated!")
-	assert.EqualError(t, err, "Empty Database", "Unexpected error message received")
-}
-
-func TestUpdateMeasurements_KAFKA_EmptyMetricName(t *testing.T) {
-	// Create new Producer
-	container, err := initContainer(context.Background())
-	defer func() {
-		t.Log("Terminating test container")
-		_ = container.Terminate(context.Background())
-	}()
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	kpr, err := NewKafkaProducer("localhost:9092", nil, nil, true)
-
-	assert.Nil(t, err, "Error encountered while create new kafka producer")
-	assert.NotNil(t, kpr, "Kafka Producer created")
-
-	// Send dummy measurement to kafka topic
-	msg := getMeasurementEnvelope()
-	msg.MetricName = ""
-	logMsg := new(string)
-	err = kpr.UpdateMeasurements(msg, logMsg)
-
-	// Check if connection was succesfully established
-	assert.NotNil(t, err, "No error generated!")
-	assert.EqualError(t, err, "Empty Metric Name", "Unexpected error message received")
 }
