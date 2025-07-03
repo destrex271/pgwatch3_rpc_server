@@ -2,49 +2,45 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"log"
 	"os"
 
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
-
-	"github.com/cybertec-postgresql/pgwatch/v3/api"
+	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
 )
 
 type TextReceiver struct {
+	pb.UnimplementedReceiverServer
 	FullPath string
-	sinks.SyncMetricHandler
 }
+
 
 func NewTextReceiver(fullPath string) (tr *TextReceiver) {
 	tr = &TextReceiver{
-		FullPath:          fullPath,
-		SyncMetricHandler: sinks.NewSyncMetricHandler(1024),
+		FullPath: fullPath,
 	}
-
-	go tr.HandleSyncMetric()
-
 	return tr
 }
 
-func (r TextReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
-
+func (r *TextReceiver) UpdateMeasurements(ctx context.Context, req *pb.MeasurementEnvelope) (*pb.Reply, error) {
 	// Write Metrics in a text file
-	fileName := msg.DBName + ".txt"
-	file, err := os.OpenFile(r.FullPath+"/"+fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	fileName := req.DBName + ".txt"
+	file, err := os.OpenFile(r.FullPath + "/" + fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 
 	if err != nil {
-		*logMsg = "Unable to open file. Error: " + err.Error()
-		log.Println(*logMsg)
-		return err
+		logMsg := "Unable to open file. Error: " + err.Error()
+		log.Println(logMsg)
+		return &pb.Reply{Logmsg: logMsg}, err
 	}
 
 	writer := bufio.NewWriter(file)
 	defer func() {_ = file.Close()}()
 
-	output := "DBName: " + msg.DBName + "\n" + "Metric: " + msg.MetricName + "\n"
+	output := "DBName: " + req.DBName + "\n" + "Metric: " + req.MetricName + "\n"
 
-	for _, data := range msg.Data {
+	for _, data := range req.Data {
 		output += sinks.GetJson(data) + "\n"
 	}
 
@@ -52,7 +48,14 @@ func (r TextReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *s
 
 	_, err = fmt.Fprintln(writer, output)
 	if err != nil {
-		return err
+		return &pb.Reply{Logmsg: "error updating measurements"}, err
 	}
-	return writer.Flush()
+	_ = writer.Flush()
+
+	return &pb.Reply{Logmsg: "Measurements Updated"}, err 
+}
+
+func (r *TextReceiver) SyncMetric(ctx context.Context, syncReq *pb.SyncReq) (*pb.Reply, error) {
+	// do nothing	
+	return nil, nil
 }
