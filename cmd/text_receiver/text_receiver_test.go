@@ -1,40 +1,22 @@
 package main
 
 import (
+	"context"
 	"os"
 	"testing"
 
-	"github.com/cybertec-postgresql/pgwatch/v3/api"
-	"github.com/destrex271/pgwatch3_rpc_server/sinks"
+	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
-func getMeasurementEnvelope() *api.MeasurementEnvelope {
-	measurement := make(map[string]any)
-	measurement["cpu"] = "0.001"
-	measurement["checkpointer"] = "1"
-	var measurements []map[string]any
-	measurements = append(measurements, measurement)
-
-	sql := make(map[int]string)
-	sql[12] = "select * from abc;"
-	metrics := &api.Metric{
-		SQLs:        sql,
-		InitSQL:     "select * from abc;",
-		NodeStatus:  "healthy",
-		StorageName: "teststore",
-		Description: "test metric",
-	}
-
-	return &api.MeasurementEnvelope{
+func getMeasurementEnvelope() *pb.MeasurementEnvelope {
+	var measurements []*structpb.Struct
+	return &pb.MeasurementEnvelope{
 		DBName:           "test",
-		SourceType:       "test_source",
 		MetricName:       "testMetric",
 		CustomTags:       nil,
 		Data:             measurements,
-		MetricDef:        *metrics,
-		RealDbname:       "test",
-		SystemIdentifier: "Identifier",
 	}
 }
 
@@ -45,14 +27,10 @@ func TestUpdateMeasurements(t *testing.T) {
 	}
 
 	// Get TextReceiver
-	recv := &TextReceiver{
-		FullPath:          path,
-		SyncMetricHandler: sinks.NewSyncMetricHandler(1024),
-	}
+	recv := NewTextReceiver(path)
 
-	logMsg := new(string)
 	msg := getMeasurementEnvelope()
-	err = recv.UpdateMeasurements(msg, logMsg)
+	_, err = recv.UpdateMeasurements(context.Background(), msg)
 
 	// Check if there are any errors
 	assert.Nil(t, err, "Error encountered while updating measurements")
