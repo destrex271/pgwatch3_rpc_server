@@ -93,15 +93,8 @@ func (r *KafkaProdReceiver) CloseConnectionForDB(dbName string) error {
 }
 
 func (r *KafkaProdReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
-	// Kafka Recv
-	if len(msg.DBName) == 0 {
-		*logMsg = "Empty Database"
-		return errors.New(*logMsg)
-	}
-
-	if len(msg.MetricName) == 0 {
-		*logMsg = "Empty Metric Name"
-		return errors.New(*logMsg)
+	if err := sinks.IsValidMeasurement(msg); err != nil {
+		return  err
 	}
 
 	// Get connection for database topic

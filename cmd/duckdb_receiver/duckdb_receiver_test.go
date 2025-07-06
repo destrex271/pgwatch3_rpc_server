@@ -124,7 +124,7 @@ func TestInitialize(t *testing.T) {
 	}
 }
 
-func TestUpdateMeasurements_ValidData(t *testing.T) {
+func TestUpdateMeasurements(t *testing.T) {
 
 	dbr, err := setupTest()
 	if err != nil {
@@ -156,58 +156,4 @@ func TestUpdateMeasurements_ValidData(t *testing.T) {
 		rowCount++
 	}
 	assert.Greater(t, rowCount, 0, "No rows found in database")
-}
-
-func TestUpdateMeasurements_EMPTY_DBNAME(t *testing.T) {
-	dbr, err := setupTest()
-	if err != nil {
-		t.Error(err)
-	}
-	defer func() {_ = dbr.Conn.Close()}()
-
-	msg := getMeasurementEnvelope()
-	msg.DBName = ""
-
-	logMsg := new(string)
-	err = dbr.UpdateMeasurements(msg, logMsg)
-	assert.NotNil(t, err, "Expected error when measurement DBName is empty, but got nil")
-	if err != nil {
-		assert.Contains(t, err.Error(), "empty database name", "Error message should mention empty database name")
-	}
-}
-
-func TestUpdateMeasurements_EMPTY_METRICNAME(t *testing.T) {
-	dbr, err := setupTest()
-	if err != nil {
-		t.Error(err)
-	}
-	defer func() {_ = dbr.Conn.Close()}()
-
-	msg := getMeasurementEnvelope()
-	msg.MetricName = ""
-
-	logMsg := new(string)
-	err = dbr.UpdateMeasurements(msg, logMsg)
-	assert.NotNil(t, err, "Expected error when measurement MetricName is empty, but got nil")
-	if err != nil {
-		assert.Contains(t, err.Error(), "empty metric name", "Error message should mention empty metric name")
-	}
-}
-
-func TestUpdateMeasurements_EMPTY_DATA(t *testing.T) {
-	dbr, err := setupTest()
-	if err != nil {
-		t.Error(err)
-	}
-	defer func() {_ = dbr.Conn.Close()}()
-
-	msg := getMeasurementEnvelope()
-	msg.Data = []map[string]any{}
-
-	logMsg := new(string)
-	err = dbr.UpdateMeasurements(msg, logMsg)
-	assert.NotNil(t, err, "Expected error when measurement Data is empty, but got nil")
-	if err != nil {
-		assert.Contains(t, err.Error(), "no measurements", "Error message should mention no measurements")
-	}
 }

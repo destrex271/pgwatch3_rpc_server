@@ -157,20 +157,8 @@ func (r *ClickHouseReceiver) InsertMeasurements(data *api.MeasurementEnvelope, c
 }
 
 func (r *ClickHouseReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
-
-	if len(msg.DBName) == 0 {
-		*logMsg = "empty database name"
-		return errors.New(*logMsg)
-	}
-
-	if len(msg.MetricName) == 0 {
-		*logMsg = "empty metric name"
-		return errors.New(*logMsg)
-	}
-
-	if len(msg.Data) == 0 {
-		*logMsg = "no measurements"
-		return errors.New(*logMsg)
+	if err := sinks.IsValidMeasurement(msg); err != nil {
+		return  err
 	}
 
 	err := r.InsertMeasurements(msg, context.Background())

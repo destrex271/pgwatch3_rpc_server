@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/csv"
-	"errors"
 	"log"
 	"os"
 
@@ -34,15 +33,12 @@ func NewCSVReceiver(fullPath string) (tr *CSVReceiver) {
 }
 
 func (r CSVReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
-	if len(msg.DBName) == 0 {
-		return errors.New("empty database")
+	if err := sinks.IsValidMeasurement(msg); err != nil {
+		return  err
 	}
 
 	// Open/Create Output file
 	superFolder := msg.DBName
-	if len(msg.MetricName) == 0 {
-		return errors.New("unidentifiable metric name: EMPTY")
-	}
 	fileName := msg.MetricName + ".csv"
 
 	// Create Database folder if does not exist
