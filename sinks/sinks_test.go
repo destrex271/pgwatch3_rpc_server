@@ -1,32 +1,26 @@
 package sinks
 
 import (
-	"crypto/tls"
-	"crypto/x509"
-	"net/rpc"
-	"os"
+	"context"
+	"fmt"
 	"testing"
 	"time"
 
-	"github.com/cybertec-postgresql/pgwatch/v3/api"
+	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
-const RootCA = "./rpc_tests_certs/ca.crt"
-const ServerCert = "./rpc_tests_certs/server.crt"
-const ServerKey = "./rpc_tests_certs/server.key"
 const ServerPort = "5050"
 const ServerAddress = "localhost:5050"
-const TLSServerPort = "6060"
-const TLSServerAddress = "localhost:6060"
 
 type Sink struct {
 	SyncMetricHandler
 }
 
-func (s *Sink) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
-	*logMsg = "Measurements Updated"
-	return nil
+func (s *Sink) UpdateMeasurements(ctx context.Context, msg *pb.MeasurementEnvelope) (*pb.Reply, error) {
+	return &pb.Reply{Logmsg: "Measurements Updated"}, nil
 }
 
 func NewSink() *Sink {
@@ -36,194 +30,116 @@ func NewSink() *Sink {
 }
 
 type Writer struct {
-	client *rpc.Client
+	client pb.ReceiverClient
 }
 
-func NewRPCWriter(TLS bool) *Writer {
-	if !TLS {
-		client, err := rpc.DialHTTP("tcp", ServerAddress)
-		if err != nil {
-			panic(err)
-		}
-		return &Writer{client: client}
-	}
-
-	ca, err := os.ReadFile(RootCA)
+func NewRPCWriter() *Writer {
+	conn, err := grpc.NewClient(ServerAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))	
 	if err != nil {
 		panic(err)
 	}
-
-	certPool := x509.NewCertPool()
-	certPool.AppendCertsFromPEM(ca)
-	tlsConfig := &tls.Config{
-		RootCAs: certPool,
-	}
-
-	conn, err := tls.Dial("tcp", TLSServerAddress, tlsConfig)
-	if err != nil {
-		panic(err)
-	}
-	return &Writer{client: rpc.NewClient(conn)}
+	client := pb.NewReceiverClient(conn)
+	return &Writer{client: client}
 }
 
-func (w *Writer) Write() string {
-	var logMsg string
-	if err := w.client.Call("Receiver.UpdateMeasurements", &api.MeasurementEnvelope{}, &logMsg); err != nil {
-		panic(err)
-	}	
-	return logMsg
+func (w *Writer) Write() (string, error) {
+	reply, err := w.client.UpdateMeasurements(context.Background(), &pb.MeasurementEnvelope{})
+	return reply.GetLogmsg(), err
 }
 
-func getTestRPCSyncRequest() *api.RPCSyncRequest {
-	return &api.RPCSyncRequest{
-		DbName:     "test_database",
+func GetTestRPCSyncRequest() *pb.SyncReq {
+	return &pb.SyncReq{
+		DBName:     "test_database",
 		MetricName: "test_metric",
-		Operation:  api.AddOp,
+		Operation:  pb.SyncOp_AddOp,
 	}
 }
 
 // Tests begin from here --------------------------------------------------
 
-func TestHTTPListener(t *testing.T) {
+func TestGRPCListener(t *testing.T) {
 	server := NewSink()
 	go func() {
-		_ = Listen(server, ServerPort)
+		err := ListenAndServe(server, ServerPort)
+		assert.NoError(t, err)
 	}()
 	time.Sleep(time.Second)
 
-	w := NewRPCWriter(false)
-	logMsg := w.Write()
+	w := NewRPCWriter()
+	logMsg, err := w.Write()
+	assert.NoError(t, err)
 	assert.Equal(t, "Measurements Updated", logMsg)
 }
 
-func TestTLSListener(t *testing.T) {
-	server := NewSink()
-	_ = os.Setenv("RPC_SERVER_KEY", ServerKey)
-	_ = os.Setenv("RPC_SERVER_CERT", ServerCert)
-	go func() {
-		_ = Listen(server, TLSServerPort)
-	}()
-	time.Sleep(time.Second)
-
-	tw := NewRPCWriter(true)
-	logMsg := tw.Write()
-	assert.Equal(t, "Measurements Updated", logMsg)
-}
-
-func TestNewSyncMetricHandler(t *testing.T) {
+func TestSyncMetricHandler(t *testing.T) {
 	chan_len := 1024
-	// Get new handler
 	handler := NewSyncMetricHandler(chan_len)
 	assert.NotNil(t, handler, "Sync Metric Handler is nil")
+	assert.Equal(t, cap(handler.syncChannel), chan_len, "Channel not of expected length")
 
-	// Check if channel is of expected length
-	assert.Equal(t, cap(handler.SyncChannel), chan_len, "Channel not of expected length")
+	t.Run("Valid Data", func(t *testing.T) {
+		data := GetTestRPCSyncRequest()
+		reply, err := handler.SyncMetric(context.Background(), data)
+		assert.NoError(t, err)
+		assert.Equal(t, reply.GetLogmsg(), fmt.Sprintf("gRPC Receiver Synced: DBName %s MetricName %s Operation %s", data.GetDBName(), data.GetMetricName(), "Add"))
+
+		data.DBName = ""
+		reply, err = handler.SyncMetric(context.Background(), data)
+		assert.NoError(t, err)
+		assert.Equal(t, reply.GetLogmsg(), fmt.Sprintf("gRPC Receiver Synced: DBName %s MetricName %s Operation %s", data.GetDBName(), data.GetMetricName(), "Add"))
+
+		data.DBName = "dummy"
+		data.MetricName = ""
+		data.Operation = pb.SyncOp_DeleteOp
+		reply, err = handler.SyncMetric(context.Background(), data)
+		assert.NoError(t, err)
+		assert.Equal(t, reply.GetLogmsg(), fmt.Sprintf("gRPC Receiver Synced: DBName %s MetricName %s Operation %s", data.GetDBName(), data.GetMetricName(), "Delete"))
+	})
+
+	t.Run("Invalid Operation", func(t *testing.T) {
+		data := GetTestRPCSyncRequest()
+		data.Operation = pb.SyncOp_InvalidOp
+
+		reply, err := handler.SyncMetric(context.Background(), data)
+		assert.Error(t, err)
+		assert.Empty(t, reply.GetLogmsg())
+	})
+
+	t.Run("Invalid Data", func(t *testing.T) {
+		data := GetTestRPCSyncRequest()
+		data.DBName = ""
+		data.MetricName = ""
+
+		reply, err := handler.SyncMetric(context.Background(), data)
+		assert.Error(t, err)
+		assert.Empty(t, reply.GetLogmsg())
+	})
 }
 
-func TestSyncMetric_ValidData(t *testing.T) {
-	chan_len := 1024
-	// Get new handler
-	handler := NewSyncMetricHandler(chan_len)
-	assert.NotNil(t, handler, "Sync Metric Handler is nil")
-
-	// Check if channel is of expected length
-	assert.Equal(t, cap(handler.SyncChannel), chan_len, "Channel not of expected length")
-
-	data := getTestRPCSyncRequest()
-
-	// Send data to Sync Metric Handler and check if it returns any errosr
-	response := new(string)
-	err := handler.SyncMetric(data, response)
-	assert.Nil(t, err, "Encoutnered an Error")
-}
-
-func TestSyncMetric_InvalidOperation(t *testing.T) {
-	chan_len := 1024
-	// Get new handler
-	handler := NewSyncMetricHandler(chan_len)
-	assert.NotNil(t, handler, "Sync Metric Handler is nil")
-
-	// Check if channel is of expected length
-	assert.Equal(t, cap(handler.SyncChannel), chan_len, "Channel not of expected length")
-
-	data := getTestRPCSyncRequest()
-	data.Operation = -1 
-
-	// Send data to Sync Metric Handler and check if it returns any error
-	response := new(string)
-	err := handler.SyncMetric(data, response)
-	assert.EqualError(t, err, "invalid operation type")
-}
-
-func TestSyncMetric_EmptyDatabase(t *testing.T) {
-	chan_len := 1024
-	// Get new handler
-	handler := NewSyncMetricHandler(0)
-	assert.NotNil(t, handler, "Sync Metric Handler is nil")
-
-	// Check if channel is of expected length
-	assert.Equal(t, cap(handler.SyncChannel), chan_len, "Channel not of expected length")
-
-	data := getTestRPCSyncRequest()
-	data.DbName = ""
-
-	// Send data to Sync Metric Handler and check if it returns any errosr
-	response := new(string)
-	err := handler.SyncMetric(data, response)
-	assert.EqualError(t, err, "empty database")
-}
-
-func TestSyncMetric_EmptyMetric(t *testing.T) {
-	chan_len := 1024
-	// Get new handler
-	handler := NewSyncMetricHandler(chan_len)
-	assert.NotNil(t, handler, "Sync Metric Handler is nil")
-
-	// Check if channel is of expected length
-	assert.Equal(t, cap(handler.SyncChannel), chan_len, "Channel not of expected length")
-
-	data := getTestRPCSyncRequest()
-	data.MetricName = ""
-
-	// Send data to Sync Metric Handler and check if it returns any errosr
-	response := new(string)
-	err := handler.SyncMetric(data, response)
-	assert.EqualError(t, err, "empty metric provided")
-}
-
-func TestHandleSyncMetric(t *testing.T) {
+func TestDefaultHandleSyncMetric(t *testing.T) {
 	handler := NewSyncMetricHandler(1024)
 	// handler routine
 	go handler.HandleSyncMetric()
 
-	logMsg := "test msg"
 	for range 10 {
 		// issue a channel write
-		_ = handler.SyncMetric(getTestRPCSyncRequest(), &logMsg)
+		_, _ = handler.SyncMetric(context.Background(), GetTestRPCSyncRequest())
 		time.Sleep(10 * time.Millisecond)
 		// Ensure the Channel has been emptied
-		assert.Equal(t, len(handler.SyncChannel), 0)
+		assert.Empty(t, len(handler.syncChannel))
 	}
 }
 
 func TestInvalidMeasurement(t *testing.T) {
-	msg := &api.MeasurementEnvelope{
-		DBName: "",
-	}
+	msg := &pb.MeasurementEnvelope{}
 	err := IsValidMeasurement(msg)
-	assert.EqualError(t, err, "empty database name")
+	assert.Error(t, err)
 
-	msg = &api.MeasurementEnvelope{
-		DBName: "dummy",
-		MetricName: "",
-	}
+	msg.DBName = "dummy"
 	err = IsValidMeasurement(msg)
-	assert.EqualError(t, err, "empty metric name")
+	assert.Error(t, err)
 
-	msg = &api.MeasurementEnvelope{
-		DBName: "dummy",
-		MetricName: "dummy",
-	}
+	msg.MetricName = "dummy"
 	err = IsValidMeasurement(msg)
-	assert.EqualError(t, err, "no data provided")
+	assert.Error(t, err)
 }
