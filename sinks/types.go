@@ -1,58 +1,59 @@
 package sinks
 
 import (
-	"errors"
+	"context"
+	"fmt"
 	"time"
 
-	"github.com/cybertec-postgresql/pgwatch/v3/api"
+	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
-type Receiver interface {
-	UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error
-	SyncMetric(syncReq *api.RPCSyncRequest, logMsg *string) error
-}
-
 type SyncMetricHandler struct {
-	SyncChannel chan api.RPCSyncRequest
+	syncChannel chan *pb.SyncReq
+	pb.UnimplementedReceiverServer
 }
 
 func NewSyncMetricHandler(chanSize int) SyncMetricHandler {
 	if chanSize == 0 {
 		chanSize = 1024
 	}
-	return SyncMetricHandler{SyncChannel: make(chan api.RPCSyncRequest, chanSize)}
+	return SyncMetricHandler{syncChannel: make(chan *pb.SyncReq, chanSize)}
 }
 
-func (handler SyncMetricHandler) SyncMetric(syncReq *api.RPCSyncRequest, logMsg *string) error {
-	if syncReq.Operation != api.AddOp && syncReq.Operation != api.DeleteOp {
-		return errors.New("invalid operation type")
+func (handler *SyncMetricHandler) SyncMetric(ctx context.Context, req *pb.SyncReq) (*pb.Reply, error) {
+	if req.GetOperation() != pb.SyncOp_AddOp && req.GetOperation() != pb.SyncOp_DeleteOp {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid operation type")
 	}
-	if len(syncReq.DbName) == 0 {
-		return errors.New("empty database")
+	if req.GetDBName() == "" && req.GetMetricName() == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid sync request both DBName and MetricName are empty")
 	}
-	if len(syncReq.MetricName) == 0 {
-		return errors.New("empty metric provided")
+
+	opName := "Add"
+	if req.GetOperation() == pb.SyncOp_DeleteOp {
+		opName = "Delete"
 	}
 
 	select {
-	case handler.SyncChannel <- *syncReq:
-		return nil
+	case handler.syncChannel <- req:
+		reply := &pb.Reply{
+			Logmsg: fmt.Sprintf("gRPC Receiver Synced: DBName %s MetricName %s Operation %s", req.GetDBName(), req.GetMetricName(), opName),
+		}
+		return reply, nil
 	case <-time.After(5 * time.Second):
-		return errors.New("timeout while trying to sync metric")
+		return nil, status.Errorf(codes.DeadlineExceeded, "timeout while trying to sync metric")
 	}
 }
 
-func (handler SyncMetricHandler) GetSyncChannelContent() (api.RPCSyncRequest, bool) {
-	content, ok := <-handler.SyncChannel
+func (handler *SyncMetricHandler) GetSyncChannelContent() (*pb.SyncReq, bool) {
+	content, ok := <-handler.syncChannel
 	return content, ok
 }
 
-// default HandleSyncMetric() clears the channel
-// in case of the SyncMetric() requests are not 
-// handled by the listening receiver
-func (handler SyncMetricHandler) HandleSyncMetric() {
+func (handler *SyncMetricHandler) HandleSyncMetric() {
 	for {
+		// default HandleSyncMetric = empty channel and do nothing
 		handler.GetSyncChannelContent()
-		// do nothing we don't care
 	}
 }
