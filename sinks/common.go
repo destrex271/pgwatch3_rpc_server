@@ -7,12 +7,12 @@ import (
 	"log"
 	"net"
 
-	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
-func GetJson[K map[string]string | map[string]any | float64 | api.MeasurementEnvelope | api.Metric](value K) string {
+func GetJson[K map[string]string | map[string]any | float64 | *structpb.Struct | []*structpb.Struct | *pb.MeasurementEnvelope](value K) string {
 	jsonString, err := json.Marshal(value)
 	if err != nil {
 		log.Default().Fatal("[ERROR]: Unable to parse Metric Definition")
@@ -32,14 +32,14 @@ func ListenAndServe(receiver pb.ReceiverServer, port string) error {
 	return server.Serve(lis)
 }
 
-func IsValidMeasurement(msg *api.MeasurementEnvelope) error {
-	if len(msg.DBName) == 0 {
+func IsValidMeasurement(msg *pb.MeasurementEnvelope) error {
+	if msg.GetDBName() == "" {
 		return errors.New("empty database name")
 	}
-	if len(msg.MetricName) == 0 {
+	if msg.GetMetricName() == "" {
 		return errors.New("empty metric name")
 	}
-	if len(msg.Data) == 0 {
+	if len(msg.GetData()) == 0 {
 		return errors.New("no data provided")
 	}
 	return nil
