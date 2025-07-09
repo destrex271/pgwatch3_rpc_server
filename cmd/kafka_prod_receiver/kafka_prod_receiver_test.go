@@ -83,7 +83,7 @@ func TestKafkaReceiver(t *testing.T) {
 		_, err = io.Copy(buf, reader)
 		assert.NoError(t, err)
 
-		msg_as_str := sinks.GetJson(msg)
+		msg_as_str, err := sinks.GetJson(msg)
 		assert.NoError(t, err)
 		assert.True(t, strings.Contains(buf.String(), msg_as_str), "Unable to retrieve measurements from topic")
 	})

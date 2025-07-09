@@ -197,7 +197,10 @@ func (r *LLamaReceiver) AddMeasurements(msg *pb.MeasurementEnvelope) error {
 	}
 
 	// Convert measurement to json
-	jsonData := sinks.GetJson(msg.GetData())
+	jsonData, err := sinks.GetJson(msg.GetData())
+	if err != nil {
+		return err
+	}
 
 	// insert measurements with current timestamp(default) into table Measurement
 	_, err = conn.Exec(r.Ctx, `INSERT INTO measurements(data, database_id, metric_name) VALUES($1, $2, $3)`, jsonData, id, msg.GetMetricName())

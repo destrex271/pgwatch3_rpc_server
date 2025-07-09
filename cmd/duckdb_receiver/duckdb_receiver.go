@@ -76,7 +76,12 @@ func (r *DuckDBReceiver) InsertMeasurements(ctx context.Context, data *pb.Measur
 	defer func() {_ = stmt.Close()}()
 
 	for _, measurement := range data.GetData() {
-		measurementJSON := sinks.GetJson(measurement)
+		measurementJSON, err := sinks.GetJson(measurement)
+		if err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+
 		_, err = stmt.Exec(
 			data.GetDBName(),
 			data.GetMetricName(),
@@ -84,6 +89,7 @@ func (r *DuckDBReceiver) InsertMeasurements(ctx context.Context, data *pb.Measur
 			customTagsJSON,
 			time.Now(),
 		)
+
 		if err != nil {
 			log.Printf("error from insert: %v", err)
 			_ = tx.Rollback()

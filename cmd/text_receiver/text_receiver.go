@@ -47,7 +47,11 @@ func (r TextReceiver) UpdateMeasurements(ctx context.Context, msg *pb.Measuremen
 	output := "DBName: " + msg.GetDBName() + "\n" + "Metric: " + msg.GetMetricName() + "\n"
 
 	for _, measurement := range msg.GetData() {
-		output += sinks.GetJson(measurement) + "\n"
+		data, err := sinks.GetJson(measurement)
+		if err != nil {
+			return nil, err
+		}
+		output += data + "\n"
 	}
 
 	output += "\n===================================\n"
