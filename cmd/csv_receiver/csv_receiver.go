@@ -1,12 +1,13 @@
 package main
 
 import (
+	"context"
 	"encoding/csv"
 	"log"
 	"os"
 
-	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
+	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
 )
 
 type CSVReceiver struct {
@@ -16,7 +17,7 @@ type CSVReceiver struct {
 
 /*
 * Structure for CSV storage:
-*   - Database Folder
+*   - Database Name
 *       - Metric1.csv
 *       - Metric2.csv
  */
@@ -32,56 +33,45 @@ func NewCSVReceiver(fullPath string) (tr *CSVReceiver) {
 	return tr
 }
 
-func (r CSVReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
+func (r CSVReceiver) UpdateMeasurements(ctx context.Context, msg *pb.MeasurementEnvelope) (*pb.Reply, error) {
 	if err := sinks.IsValidMeasurement(msg); err != nil {
-		return  err
+		return  nil, err
 	}
 
-	// Open/Create Output file
-	superFolder := msg.DBName
-	fileName := msg.MetricName + ".csv"
+	superFolder := msg.GetDBName()
+	fileName := msg.GetMetricName() + ".csv"
 
 	// Create Database folder if does not exist
-	err := os.MkdirAll(r.FullPath+"/"+superFolder, os.ModePerm)
+	err := os.MkdirAll(r.FullPath + "/" + superFolder, os.ModePerm)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	file, err := os.OpenFile(r.FullPath+"/"+superFolder+"/"+fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-
-	log.Println("[INFO]: Created Folders and Measurement Files")
-
+	file, err := os.OpenFile(r.FullPath + "/" + superFolder + "/" + fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		*logMsg = "Unable to access file. Error: " + err.Error()
-		log.Fatal(*logMsg)
-		return err
+		log.Fatal("Unable to access file. Error: " + err.Error())
+		return nil, err
 	}
 
 	writer := csv.NewWriter(file)
-	log.Println("[INFO]: Adding new measurements for ", msg.DBName)
-
-	for _, data := range msg.Data {
+	for _, data := range msg.GetData() {
 		record := [...]string{
-			msg.SourceType,
-			msg.MetricName,
+			msg.GetMetricName(),
 			sinks.GetJson(data),
-			sinks.GetJson(msg.CustomTags),
-			sinks.GetJson(msg.MetricDef),
+			sinks.GetJson(msg.GetCustomTags()),
 		}
 
 		// Writing measurements to CSV
 		if err := writer.Write(record[:]); err != nil {
-			log.Fatal("Unable to write to CSV file " + fileName + "Error: " + err.Error())
-			return err
+			log.Println("Unable to write to CSV file " + fileName + "Error: " + err.Error())
+			return nil, err
 		}
 
 		writer.Flush()
-
 		if err := writer.Error(); err != nil {
-			log.Fatal("Error: ", err)
-			return err
+			return nil, err
 		}
 	}
 
-	return nil
+	return &pb.Reply{}, nil
 }
