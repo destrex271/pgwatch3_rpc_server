@@ -2,17 +2,18 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
-	"math/rand"
 	"testing"
 	"time"
 
-	"github.com/cybertec-postgresql/pgwatch/v3/api"
+	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
 	"github.com/stretchr/testify/assert"
 	"github.com/testcontainers/testcontainers-go"
 	tcollama "github.com/testcontainers/testcontainers-go/modules/ollama"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 const new_image = "tinyllama_image"
@@ -60,46 +61,32 @@ func initPostgresContainer(ctx context.Context) (*postgres.PostgresContainer, er
 	return postgresContainer, nil
 }
 
-func getMeasurementEnvelope() *api.MeasurementEnvelope {
-	measurement := make(map[string]any)
-	measurement["cpu"] = rand.Float64() * 1
-	measurement["checkpointer"] = rand.Intn(100)
-	var measurements []map[string]any
-	measurements = append(measurements, measurement)
-
-	sql := make(map[int]string)
-	sql[12] = "select * from abc;"
-	metrics := &api.Metric{
-		SQLs:        sql,
-		InitSQL:     "select * from abc;",
-		NodeStatus:  "healthy",
-		StorageName: "teststore",
-		Description: "test metric",
+func GetTestMeasurementEnvelope() *pb.MeasurementEnvelope {
+	st, err := structpb.NewStruct(map[string]any{"key": "val"})
+	if err != nil {
+		panic(err)
 	}
-
-	return &api.MeasurementEnvelope{
+	measurements := []*structpb.Struct{st}
+	return &pb.MeasurementEnvelope{
 		DBName:           "test",
-		SourceType:       "test_source",
-		MetricName:       "health",
-		CustomTags:       nil,
+		MetricName:       "testMetric",
 		Data:             measurements,
-		MetricDef:        *metrics,
-		RealDbname:       "test",
-		SystemIdentifier: "Identifier",
 	}
 }
 
-func TestNewLLamaReceiver(t *testing.T) {
-	ctx := context.Background()
+var connectionStr string
+var pgConnectionStr string
+var ctx context.Context
 
+func TestMain(m *testing.M) {
+	ctx := context.Background()
 	ollamaContainer, err := initOllamaContainer(ctx)
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
-
 	postgresContainer, err := initPostgresContainer(ctx)
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
 
 	defer func() {
@@ -111,246 +98,72 @@ func TestNewLLamaReceiver(t *testing.T) {
 		}
 	}()
 
-	// Create new receiver
-	connectionStr, err := ollamaContainer.ConnectionString(ctx)
+	connectionStr, err = ollamaContainer.ConnectionString(ctx)
 	if err != nil {
 		log.Println("Unable to get ollama connection string")
-		t.Fatal(err)
+		panic(err)
 	}
 
-	pgConnectionStr, err := postgresContainer.ConnectionString(ctx)
+	pgConnectionStr, err = postgresContainer.ConnectionString(ctx)
 	if err != nil {
 		log.Println("Unable to get Postgres connection string")
-		t.Fatal(err)
+		panic(err)
 	}
 
+	m.Run()
+}
+
+// Tests begin from here
+
+func TestLLamaReceiver(t *testing.T) {
 	recv, err := NewLLamaReceiver(connectionStr, pgConnectionStr, ctx, 10)
-
 	assert.NotNil(t, recv, "Receiver object is nil")
-	assert.Nil(t, err, "Error encountered while creating receiver")
-}
+	assert.NoError(t, err, "Error encountered while creating receiver")
 
-func TestSetupTables(t *testing.T) {
-	ctx := context.Background()
-
-	ollamaContainer, err := initOllamaContainer(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	postgresContainer, err := initPostgresContainer(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer func() {
-		if err := ollamaContainer.Terminate(ctx); err != nil {
-			log.Printf("failed to terminate container: %s", err)
-		}
-		if err := postgresContainer.Terminate(ctx); err != nil {
-			log.Printf("failed to terminate container: %s", err)
-		}
-	}()
-
-	// Create new receiver
-	connectionStr, err := ollamaContainer.ConnectionString(ctx)
-	if err != nil {
-		log.Println("Unable to get ollama connection string")
-		t.Fatal(err)
-	}
-
-	pgConnectionStr, err := postgresContainer.ConnectionString(ctx)
-	if err != nil {
-		log.Println("Unable to get Postgres connection string")
-		t.Fatal(err)
-	}
-
-	recv, err := NewLLamaReceiver(connectionStr, pgConnectionStr, ctx, 10)
-
-	assert.NotNil(t, recv, "Receiver object is nil")
-	assert.Nil(t, err, "Error encountered while creating receiver")
-
-	// obtain db conneciton
 	conn, err := recv.ConnPool.Acquire(recv.Ctx)
-
-	assert.Nil(t, err, "error encountered while acquiring new connection")
+	assert.NoError(t, err, "error encountered while acquiring new connection")
 	assert.NotNil(t, conn, "connection obtained in nil")
 	defer conn.Release()
 
-	// Call setup tables function
-	err = recv.SetupTables()
-	assert.Nil(t, err, "error encountered while setting up tables")
+	t.Run("Check Tables", func(t *testing.T) {
+		tables := [...]string{"db", "measurements", "insights"}
+		var doesExist bool
+		for _, table := range tables {
+			err = conn.QueryRow(recv.Ctx, 
+				fmt.Sprintf(`SELECT EXISTS (
+				SELECT FROM information_schema.tables 
+				WHERE  table_name   = %s
+			);`, table)).Scan(&doesExist)
 
-	// Check postgres for DB table
-	var doesExist bool
-	err = conn.QueryRow(recv.Ctx, `SELECT EXISTS (
-		SELECT FROM information_schema.tables 
-		WHERE  table_name   = 'db'
-    );`).Scan(&doesExist)
-
-	assert.Nil(t, err, "error encountered while querying table")
-	assert.True(t, doesExist, "table DB does not exist")
-
-	// Check postgres for Measurement table
-	err = conn.QueryRow(recv.Ctx, `SELECT EXISTS (
-		SELECT FROM information_schema.tables 
-		WHERE  table_name   = 'measurements'
-    );`).Scan(&doesExist)
-
-	assert.Nil(t, err, "error encountered while querying table")
-	assert.True(t, doesExist, "table Measurements does not exist")
-
-	// Check postgres for Insights
-	err = conn.QueryRow(recv.Ctx, `SELECT EXISTS (
-		SELECT FROM information_schema.tables 
-		WHERE  table_name   = 'insights'
-    );`).Scan(&doesExist)
-
-	assert.Nil(t, err, "error encountered while querying table")
-	assert.True(t, doesExist, "table insights does not exist")
-}
-
-func TestUpdateMeasurements(t *testing.T) {
-	ctx := context.Background()
-
-	ollamaContainer, err := initOllamaContainer(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	postgresContainer, err := initPostgresContainer(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer func() {
-		if err := ollamaContainer.Terminate(ctx); err != nil {
-			log.Printf("failed to terminate container: %s", err)
+			assert.NoError(t, err, "error encountered while querying table")
+			assert.True(t, doesExist, fmt.Sprintf("table %s does not exist", table))
 		}
-		if err := postgresContainer.Terminate(ctx); err != nil {
-			log.Printf("failed to terminate container: %s", err)
+	})
+
+	t.Run("UpdateMeasurements", func(t *testing.T) {
+		msg := GetTestMeasurementEnvelope()
+		_, err = recv.UpdateMeasurements(ctx, msg)
+		assert.NoError(t, err, "error encountered while updating measurements")
+
+		// Check insights table for new entry
+		newInsightsCount := 0
+		recv.InsightsGenerationWg.Wait()
+		err = conn.QueryRow(recv.Ctx, "SELECT COUNT(*) FROM insights;").Scan(&newInsightsCount)
+		assert.NoError(t, err)
+		assert.Equal(t, newInsightsCount, 1, "No new entries inserted in insights table")
+	})
+
+	t.Run("UpdateMeasurements Multiple", func(t *testing.T) {
+		msg := GetTestMeasurementEnvelope()
+		for range 10 {
+			_, err = recv.UpdateMeasurements(context.Background(), msg)
+			assert.NoError(t, err, "error encountered while updating measurements")
 		}
-	}()
 
-	// Create new receiver
-	connectionStr, err := ollamaContainer.ConnectionString(ctx)
-	if err != nil {
-		log.Println("Unable to get ollama connection string")
-		t.Fatal(err)
-	}
-
-	pgConnectionStr, err := postgresContainer.ConnectionString(ctx)
-	if err != nil {
-		log.Println("Unable to get Postgres connection string")
-		t.Fatal(err)
-	}
-
-	recv, err := NewLLamaReceiver(connectionStr, pgConnectionStr, ctx, 1)
-
-	assert.NotNil(t, recv, "Receiver object is nil")
-	assert.Nil(t, err, "Error encountered while creating receiver")
-
-	// obtain db conneciton
-	conn, err := recv.ConnPool.Acquire(recv.Ctx)
-
-	assert.Nil(t, err, "error encountered while acquiring new connection")
-	assert.NotNil(t, conn, "connection obtained in nil")
-	defer conn.Release()
-
-	// Get current number of insights in database
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Send Update Measurements
-	msg := getMeasurementEnvelope()
-	logMsg := new(string)
-
-	err = recv.UpdateMeasurements(msg, logMsg)
-
-	assert.Nil(t, err, "error encountered while updating measurements")
-
-	// Check insights table for new entry
-	newInsightsCount := 0
-	recv.InsightsGenerationWg.Wait()
-	err = conn.QueryRow(recv.Ctx, "SELECT COUNT(*) FROM insights;").Scan(&newInsightsCount)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.Equal(t, newInsightsCount, 1, "No new entries inserted in insights table")
-}
-
-// Insert multiple records
-func TestUpdateMeasurements_Multiple(t *testing.T) {
-	ctx := context.Background()
-
-	ollamaContainer, err := initOllamaContainer(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	postgresContainer, err := initPostgresContainer(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer func() {
-		if err := ollamaContainer.Terminate(ctx); err != nil {
-			log.Printf("failed to terminate container: %s", err)
-		}
-		if err := postgresContainer.Terminate(ctx); err != nil {
-			log.Printf("failed to terminate container: %s", err)
-		}
-	}()
-
-	// Create new receiver
-	connectionStr, err := ollamaContainer.ConnectionString(ctx)
-	if err != nil {
-		log.Println("Unable to get ollama connection string")
-		t.Fatal(err)
-	}
-
-	pgConnectionStr, err := postgresContainer.ConnectionString(ctx)
-	if err != nil {
-		log.Println("Unable to get Postgres connection string")
-		t.Fatal(err)
-	}
-
-	recv, err := NewLLamaReceiver(connectionStr, pgConnectionStr, ctx, 1)
-
-	assert.NotNil(t, recv, "Receiver object is nil")
-	assert.Nil(t, err, "Error encountered while creating receiver")
-
-	// obtain db conneciton
-	conn, err := recv.ConnPool.Acquire(recv.Ctx)
-
-	assert.Nil(t, err, "error encountered while acquiring new connection")
-	assert.NotNil(t, conn, "connection obtained in nil")
-	defer conn.Release()
-
-	// Get current number of insights in database
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Send Update Measurements
-	msg := getMeasurementEnvelope()
-	logMsg := new(string)
-
-	oldCount := 0
-	for range 10 {
-		err = recv.UpdateMeasurements(msg, logMsg)
-		assert.Nil(t, err, "error encountered while updating measurements")
-	}
-
-	newInsightsCount := 0
-	t.Log("waiting.....")
-	recv.InsightsGenerationWg.Wait()
-	t.Log("waiting done")
-	err = conn.QueryRow(recv.Ctx, "SELECT COUNT(*) FROM insights;").Scan(&newInsightsCount)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.Greater(t, newInsightsCount, oldCount, "No new entries inserted in insights table")
+		newInsightsCount := 0
+		recv.InsightsGenerationWg.Wait()
+		err = conn.QueryRow(recv.Ctx, "SELECT COUNT(*) FROM insights;").Scan(&newInsightsCount)
+		assert.NoError(t, err)
+		assert.Equal(t, newInsightsCount, 10, "No new entries inserted in insights table")
+	})
 }

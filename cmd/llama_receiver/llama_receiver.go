@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
+	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rifaideen/talkative"
 )
@@ -40,7 +40,7 @@ type LLamaReceiver struct {
 	Ctx       context.Context
 	ServerURI string
 	ConnPool  *pgxpool.Pool
-	MsmtBatch []*api.MeasurementEnvelope
+	MsmtBatch []*pb.MeasurementEnvelope
 	BatchSize int
 	mu sync.Mutex
 	MsCount   int
@@ -83,7 +83,7 @@ func NewLLamaReceiver(LLamaServerURI string, pgURI string, ctx context.Context, 
 		Ctx:               ctx,
 		ServerURI:         LLamaServerURI,
 		ConnPool:          pool,
-		MsmtBatch:         make([]*api.MeasurementEnvelope, 0, batchSize),
+		MsmtBatch:         make([]*pb.MeasurementEnvelope, 0, batchSize),
 		BatchSize:         batchSize,
 		SyncMetricHandler: sinks.NewSyncMetricHandler(1024),
 		MsCount:           0,
@@ -118,10 +118,10 @@ func (r *LLamaReceiver) HandleSyncMetric() {
 		defer conn.Release()
 
 		switch req.Operation {
-		case api.AddOp:
-			_, err = conn.Exec(r.Ctx, `INSERT INTO db(dbname) VALUES($1)`, req.DbName)
-		case api.DeleteOp:
-			_, err = conn.Exec(r.Ctx, `DELETE FROM db WHERE dbanme=$1 CASCADE;`, req.DbName)
+		case pb.SyncOp_AddOp:
+			_, err = conn.Exec(r.Ctx, `INSERT INTO db(dbname) VALUES($1)`, req.GetDBName())
+		case pb.SyncOp_DeleteOp:
+			_, err = conn.Exec(r.Ctx, `DELETE FROM db WHERE dbanme=$1 CASCADE;`, req.GetDBName())
 		}
 
 		if err != nil {
@@ -169,7 +169,7 @@ func (r *LLamaReceiver) SetupTables() error {
 	return nil
 }
 
-func (r *LLamaReceiver) AddMeasurements(msg *api.MeasurementEnvelope) error {
+func (r *LLamaReceiver) AddMeasurements(msg *pb.MeasurementEnvelope) error {
 	conn, err := r.ConnPool.Acquire(r.Ctx)
 	if err != nil {
 		return errors.New("unable to acquire new connection")
@@ -178,32 +178,29 @@ func (r *LLamaReceiver) AddMeasurements(msg *api.MeasurementEnvelope) error {
 
 	var id int
 	// Try to fetch id
-	err = conn.QueryRow(r.Ctx, `SELECT id FROM db WHERE dbname=$1`, msg.DBName).Scan(&id)
+	err = conn.QueryRow(r.Ctx, `SELECT id FROM db WHERE dbname=$1`, msg.GetDBName()).Scan(&id)
 	if err != nil {
 		if err.Error() != "no rows in result set" {
 			return err
 		}
 		// if not found, add database to table
-		_, err := conn.Exec(r.Ctx, `INSERT INTO db(dbname) VALUES($1)`, msg.DBName)
+		_, err := conn.Exec(r.Ctx, `INSERT INTO db(dbname) VALUES($1)`, msg.GetDBName())
 		if err != nil {
 			return err
 		}
 
 		// Get new id
-		err = conn.QueryRow(r.Ctx, `SELECT id FROM db WHERE dbname=$1`, msg.DBName).Scan(&id)
+		err = conn.QueryRow(r.Ctx, `SELECT id FROM db WHERE dbname=$1`, msg.GetDBName()).Scan(&id)
 		if err != nil {
 			return err
 		}
 	}
 
 	// Convert measurement to json
-	jsonData, err := json.Marshal(msg.Data)
-	if err != nil {
-		return err
-	}
+	jsonData := sinks.GetJson(msg.GetData())
 
 	// insert measurements with current timestamp(default) into table Measurement
-	_, err = conn.Exec(r.Ctx, `INSERT INTO measurements(data, database_id, metric_name) VALUES($1, $2, $3)`, string(jsonData), id, msg.MetricName)
+	_, err = conn.Exec(r.Ctx, `INSERT INTO measurements(data, database_id, metric_name) VALUES($1, $2, $3)`, jsonData, id, msg.GetMetricName())
 	if err != nil {
 		return err
 	}
@@ -289,8 +286,8 @@ func (r *LLamaReceiver) AddInsights(dbid int, insights string) error {
 	return nil
 }
 
-func (r *LLamaReceiver) GenerateInsights(msg *api.MeasurementEnvelope) error {
-	final_msg, err := r.PreparePrompt(msg.DBName, msg.MetricName)
+func (r *LLamaReceiver) GenerateInsights(msg *pb.MeasurementEnvelope) error {
+	final_msg, err := r.PreparePrompt(msg.GetDBName(), msg.GetMetricName())
 	if err != nil {
 		return err
 	}
@@ -331,7 +328,7 @@ func (r *LLamaReceiver) GenerateInsights(msg *api.MeasurementEnvelope) error {
 	}
 
 	<-done // wait for the chat to complete
-	id, err := r.GetDBID(msg.DBName)
+	id, err := r.GetDBID(msg.GetDBName())
 	if err != nil {
 		return errors.New("unable to find database in records")
 	}
@@ -344,15 +341,15 @@ func (r *LLamaReceiver) GenerateInsights(msg *api.MeasurementEnvelope) error {
 	return nil
 }
 
-func (r *LLamaReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
+func (r *LLamaReceiver) UpdateMeasurements(ctx context.Context, msg *pb.MeasurementEnvelope) (*pb.Reply, error) {
 	if err := sinks.IsValidMeasurement(msg); err != nil {
-		return  err
+		return nil, err
 	}
 
 	// store measurement in pg database
 	err := r.AddMeasurements(msg)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	log.Println("[INFO]: Inserted entry into database")
@@ -367,7 +364,7 @@ func (r *LLamaReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg 
 		// Generate insights for measurements of batch set
 		for _, val := range r.MsmtBatch {
 			r.InsightsGenerationWg.Add(1)
-			go func(val *api.MeasurementEnvelope) {
+			go func(val *pb.MeasurementEnvelope) {
 				defer r.InsightsGenerationWg.Done()
 				err = r.GenerateInsights(val)
 				if err != nil {
@@ -382,5 +379,5 @@ func (r *LLamaReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg 
 	}
 	r.mu.Unlock()
 
-	return nil
+	return &pb.Reply{}, nil
 }
