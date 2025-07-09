@@ -17,7 +17,6 @@ func main() {
 		return
 	}
 
-	var server sinks.Receiver
 	user := os.Getenv("user")
 	password := os.Getenv("password")
 	serverURI := os.Getenv("server")
@@ -27,7 +26,7 @@ func main() {
 		log.Fatal("[ERROR]: Unable to create Click house receiver: ", err)
 	}
 
-	if err = sinks.Listen(server, *port); err != nil {
+	if err = sinks.ListenAndServe(server, *port); err != nil {
 		log.Fatal(err)
 	}
 }

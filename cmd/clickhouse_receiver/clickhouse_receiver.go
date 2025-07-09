@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -12,162 +11,118 @@ import (
 
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
-	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
+	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
 )
 
 type ClickHouseReceiver struct {
-	Ctx  context.Context
 	Conn driver.Conn
 	sinks.SyncMetricHandler
 	Engine string
 }
 
-func GetConnection(user string, password string, dbname string, serverURI string, isTest bool) (driver.Conn, error) {
-	dialCount := 0
-
+func GetConnection(User string, Password string, DBName string, serverURI string, isTest bool) (driver.Conn, error) {
 	var conn driver.Conn
 	var err error
+	dialCount := 0
+
+	options := &clickhouse.Options{
+		Addr:     []string{serverURI},
+		Protocol: clickhouse.Native,
+		Auth: clickhouse.Auth{
+			Database: DBName,
+			Username: User,
+			Password: Password,
+		},
+		TLS: &tls.Config{},
+	}
 
 	if isTest {
-		conn, err = clickhouse.Open(&clickhouse.Options{
-			Addr:     []string{serverURI},
-			Protocol: clickhouse.Native,
-			Auth: clickhouse.Auth{
-				Database: dbname,
-				Username: user,
-				Password: password,
-			},
-			DialContext: func(ctx context.Context, addr string) (net.Conn, error) {
-				dialCount++
-				var d net.Dialer
-				return d.DialContext(ctx, "tcp", addr)
-			},
-			TLS: &tls.Config{},
-		})
-
-	} else {
-		log.Println("Getting normal connection")
-		conn, err = clickhouse.Open(&clickhouse.Options{
-			Addr:     []string{serverURI},
-			Protocol: clickhouse.Native,
-			Auth: clickhouse.Auth{
-				Database: dbname,
-				Username: user,
-				Password: password,
-			},
-			TLS: &tls.Config{},
-		})
+		options.DialContext = func(ctx context.Context, addr string) (net.Conn, error) {
+			dialCount++
+			var d net.Dialer
+			return d.DialContext(ctx, "tcp", addr)
+		}
 	}
 
-	log.Println(conn)
+	conn, err = clickhouse.Open(options)
 	if err != nil {
 		return nil, err
 	}
-
 	err = conn.Ping(context.Background())
-	log.Println(err)
-	if err != nil {
-		return nil, err
-	}
 	return conn, err
 }
 
-func NewClickHouseReceiver(user string, password string, dbname string, serverURI string, isTest bool) (chr *ClickHouseReceiver, err error) {
-	// Get clickhouse connection
-	conn, err := GetConnection(user, password, dbname, serverURI, isTest)
+func NewClickHouseReceiver(User string, Password string, DBName string, serverURI string, isTest bool) (*ClickHouseReceiver, error) {
+	conn, err := GetConnection(User, Password, DBName, serverURI, isTest)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create new struct
-	clickhouseRec := &ClickHouseReceiver{
+	chr := &ClickHouseReceiver{
 		Conn:              conn,
 		SyncMetricHandler: sinks.NewSyncMetricHandler(1024),
 		Engine:            "MergeTree",
 	}
 
-	// Setup tables
-	log.Println("[INFO]: Setting up Measurements table...")
-	err = clickhouseRec.SetupTables(context.Background())
+	err = chr.SetupTables()
 	if err != nil {
 		return nil, err
 	}
 
-	go clickhouseRec.HandleSyncMetric()
-
-	log.Println("[INFO]: Done!")
-	return clickhouseRec, nil
+	go chr.HandleSyncMetric()
+	return chr, nil
 }
 
-// Setup tables
-func (r *ClickHouseReceiver) SetupTables(ctx context.Context) error {
-
-	// Try creating JSON type if possible --
-	query := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS Measurements(dbname String,custom_tags Map(String, String),metric_def JSON,real_dbname String,system_identifier String,source_type String,data JSON,timestamp DateTime DEFAULT now(),PRIMARY KEY (dbname, timestamp)) ENGINE=%s`, r.Engine)
-	err := r.Conn.Exec(ctx, query)
+func (r *ClickHouseReceiver) SetupTables() error {
+	query := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS Measurements(dbname String, metric_name String, custom_tags Map(String, String), data JSON, timestamp DateTime DEFAULT now(), PRIMARY KEY (dbname, timestamp)) ENGINE=%s`, r.Engine)
+	err := r.Conn.Exec(context.TODO(), query)
 
 	if err != nil {
-		// String Query
-		log.Println("[INFO]: Unable to enforce JSON object. Will use string for storing JSON data")
-		query = fmt.Sprintf(`CREATE TABLE IF NOT EXISTS Measurements(dbname String,custom_tags Map(String, String),metric_def String,real_dbname String,system_identifier String,source_type String,data String,timestamp DateTime DEFAULT now(),PRIMARY KEY (dbname, timestamp)) ENGINE=%s`, r.Engine)
+		log.Println("[INFO]: Unable to enforce JSON object. Will use string for storing Measurements data")
+		query = fmt.Sprintf(`CREATE TABLE IF NOT EXISTS Measurements(dbname String, metric_name String, custom_tags Map(String, String), data String, timestamp DateTime DEFAULT now(),PRIMARY KEY (dbname, timestamp)) ENGINE=%s`, r.Engine)
 	}
 
-	err = r.Conn.Exec(ctx, query)
-	if err != nil {
-		return errors.New("failed to create Measurements table: " + err.Error())
-	}
-	return nil
+	err = r.Conn.Exec(context.TODO(), query)
+	return err
 }
 
-// Insert data
-func (r *ClickHouseReceiver) InsertMeasurements(data *api.MeasurementEnvelope, ctx context.Context) error {
-
-	// customTags, _ := json.Marshal(data.CustomTags)
-	metricDef, _ := json.Marshal(data.MetricDef)
-
-	batch, err := r.Conn.PrepareBatch(ctx, `
-		INSERT INTO Measurements (dbname, custom_tags, metric_def, real_dbname, system_identifier, source_type, data)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`)
+func (r *ClickHouseReceiver) InsertMeasurements(ctx context.Context, data *pb.MeasurementEnvelope) error {
+	batch, err := r.Conn.PrepareBatch(ctx, `INSERT INTO Measurements (dbname, metric_name, custom_tags, data) VALUES (?, ?, ?)`)
 	if err != nil {
 		return fmt.Errorf("failed to prepare batch: %v", err)
 	}
 
-	for _, measurement := range data.Data {
-		measurementJson, err := json.Marshal(measurement)
-		if err != nil {
-			msg := "unable to insert measurments"
-			log.Println("[ERROR]: " + msg)
-			log.Println(msg)
-		}
+	for _, measurement := range data.GetData() {
+		measurementJson := sinks.GetJson(measurement)
+		err = batch.Append(
+			data.GetDBName(), 
+			data.GetMetricName(),
+			data.GetCustomTags(),
+			measurementJson,
+		)
 
-		err = batch.Append(data.DBName, data.CustomTags, string(metricDef), data.RealDbname, data.SystemIdentifier, data.SourceType, string(measurementJson))
 		if err != nil {
 			msg := "unable to insert data - " + err.Error()
-			log.Println("[ERROR]: " + msg)
+			log.Println(msg)
 			return errors.New(msg)
 		}
 	}
-	err = batch.Send()
-	if err != nil {
-		return err
-	}
 
-	return nil
+	err = batch.Send()
+	return err
 }
 
-func (r *ClickHouseReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
+func (r *ClickHouseReceiver) UpdateMeasurements(ctx context.Context, msg *pb.MeasurementEnvelope) (*pb.Reply, error) {
 	if err := sinks.IsValidMeasurement(msg); err != nil {
-		return  err
+		return nil, err
 	}
 
-	err := r.InsertMeasurements(msg, context.Background())
+	err := r.InsertMeasurements(ctx, msg)
 	if err != nil {
-		*logMsg = err.Error()
-		return err
+		return nil, err
 	}
 
 	log.Println("[INFO]: Inserted batch at : " + time.Now().String())
-	*logMsg = "[INFO]: Successfully inserted batch!"
-	return nil
+	return &pb.Reply{}, nil
 }
