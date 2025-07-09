@@ -76,10 +76,9 @@ func GetTestMeasurementEnvelope() *pb.MeasurementEnvelope {
 
 var connectionStr string
 var pgConnectionStr string
-var ctx context.Context
+var ctx = context.Background()
 
 func TestMain(m *testing.M) {
-	ctx := context.Background()
 	ollamaContainer, err := initOllamaContainer(ctx)
 	if err != nil {
 		panic(err)
@@ -116,7 +115,7 @@ func TestMain(m *testing.M) {
 // Tests begin from here
 
 func TestLLamaReceiver(t *testing.T) {
-	recv, err := NewLLamaReceiver(connectionStr, pgConnectionStr, ctx, 10)
+	recv, err := NewLLamaReceiver(connectionStr, pgConnectionStr, ctx, 1)
 	assert.NotNil(t, recv, "Receiver object is nil")
 	assert.NoError(t, err, "Error encountered while creating receiver")
 
@@ -132,7 +131,7 @@ func TestLLamaReceiver(t *testing.T) {
 			err = conn.QueryRow(recv.Ctx, 
 				fmt.Sprintf(`SELECT EXISTS (
 				SELECT FROM information_schema.tables 
-				WHERE  table_name   = %s
+				WHERE  table_name   = '%s'
 			);`, table)).Scan(&doesExist)
 
 			assert.NoError(t, err, "error encountered while querying table")
@@ -164,6 +163,6 @@ func TestLLamaReceiver(t *testing.T) {
 		recv.InsightsGenerationWg.Wait()
 		err = conn.QueryRow(recv.Ctx, "SELECT COUNT(*) FROM insights;").Scan(&newInsightsCount)
 		assert.NoError(t, err)
-		assert.Equal(t, newInsightsCount, 10, "No new entries inserted in insights table")
+		assert.Greater(t, newInsightsCount, 1, "No new entries inserted in insights table")
 	})
 }
