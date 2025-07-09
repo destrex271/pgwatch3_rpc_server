@@ -2,43 +2,26 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/cybertec-postgresql/pgwatch/v3/api"
-	"github.com/destrex271/pgwatch3_rpc_server/sinks"
+	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
-func getMeasurementEnvelope() *api.MeasurementEnvelope {
-	measurement := make(map[string]any)
-	measurement["cpu"] = "0.001"
-	measurement["checkpointer"] = "1"
-	var measurements []map[string]any
-	measurements = append(measurements, measurement)
-
-	sql := make(map[int]string)
-	sql[12] = "select * from abc;"
-	metrics := &api.Metric{
-		SQLs:        sql,
-		InitSQL:     "select * from abc;",
-		NodeStatus:  "healthy",
-		StorageName: "teststore",
-		Description: "test metric",
+func GetTestMeasurementEnvelope() *pb.MeasurementEnvelope {
+	st, err := structpb.NewStruct(map[string]any{"key": "val"})
+	if err != nil {
+		panic(err)
 	}
-
-	return &api.MeasurementEnvelope{
+	measurements := []*structpb.Struct{st}
+	return &pb.MeasurementEnvelope{
 		DBName:           "test",
-		SourceType:       "test_source",
 		MetricName:       "testMetric",
-		CustomTags:       nil,
 		Data:             measurements,
-		MetricDef:        *metrics,
-		RealDbname:       "test",
-		SystemIdentifier: "Identifier",
 	}
 }
 
@@ -75,27 +58,13 @@ func setupTest() (*DuckDBReceiver, error) {
 }
 
 func TestInitialize(t *testing.T) {
-	db, err := sql.Open("duckdb", testDBPath)
+	dbr, err := setupTest()
 	if err != nil {
-		t.Error(err)
-	}
-	dbr := &DuckDBReceiver{
-		Conn:              db,
-		DBName:            testDBPath,
-		TableName:         "measurements",
-		Ctx:               context.Background(),
-		SyncMetricHandler: sinks.NewSyncMetricHandler(1024),
-	}
-
-	dbr.initializeTable()
-	createTableQuery := "CREATE TABLE IF NOT EXISTS " + dbr.TableName + "(dbname VARCHAR, metric_name VARCHAR, data JSON, custom_tags JSON, metric_def JSON, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (dbname, timestamp))"
-	_, err = dbr.Conn.Exec(createTableQuery)
-	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	// assert the table creation
-	rows, err := db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name='measurements'")
+	rows, err := dbr.Conn.Query("SELECT name FROM sqlite_master WHERE type='table' AND name='measurements'")
 	assert.Nil(t, err, "could not to query tables")
 	defer func() {_ = rows.Close()}()
 	tableExists := rows.Next()
@@ -103,7 +72,7 @@ func TestInitialize(t *testing.T) {
 
 	// assert the structure
 	// note - pk and notnull are not INT types but bool types in duckdb
-	columns, err := db.Query("PRAGMA table_info(measurements)")
+	columns, err := dbr.Conn.Query("PRAGMA table_info(measurements)")
 	assert.Nil(t, err, "Failed to get table information")
 	defer func() {_ = columns.Close()}()
 	columnNames := make(map[string]bool)
@@ -113,30 +82,30 @@ func TestInitialize(t *testing.T) {
 		var notnull bool
 		var dflt_value interface{}
 		var pk bool
+
 		err = columns.Scan(&cid, &name, &type_name, &notnull, &dflt_value, &pk)
 		assert.Nil(t, err, "Failed to scan column information")
 		columnNames[name] = true
 	}
+
 	// assert required columns exist (in this setting.)
-	requiredColumns := []string{"dbname", "metric_name", "data", "custom_tags", "metric_def", "timestamp"}
+	requiredColumns := []string{"dbname", "metric_name", "data", "custom_tags", "timestamp"}
 	for _, col := range requiredColumns {
 		assert.True(t, columnNames[col], fmt.Sprintf("Required column '%s' missing from table", col))
 	}
 }
 
 func TestUpdateMeasurements(t *testing.T) {
-
 	dbr, err := setupTest()
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	defer func() {_ = dbr.Conn.Close()}()
-	// Call Update Measurements with dummy packet
-	msg := getMeasurementEnvelope()
-	logMsg := new(string)
-	err = dbr.UpdateMeasurements(msg, logMsg)
-	// time.Sleep(1 * time.Second)
-	assert.Nil(t, err, *logMsg)
+
+	// Call Update Measurements with dummy data
+	msg := GetTestMeasurementEnvelope()
+	_, err = dbr.UpdateMeasurements(context.Background(), msg)
+	assert.Nil(t, err)
 
 	// Check if root folder created for database
 	if _, err := os.Stat(testDBPath); err != nil {
