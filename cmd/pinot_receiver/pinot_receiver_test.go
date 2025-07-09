@@ -1,15 +1,17 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
+	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // mockHTTPServer creates a mock Pinot controller server for testing
@@ -99,35 +101,20 @@ func setupTestConfigDir(t *testing.T) (string, func()) {
 	return tempDir, cleanup
 }
 
-// getMeasurementEnvelope creates a test measurement envelope
-func getMeasurementEnvelope() *api.MeasurementEnvelope {
-	measurement := make(map[string]any)
-	measurement["cpu"] = "0.001"
-	measurement["checkpointer"] = "1"
-	var measurements []map[string]any
-	measurements = append(measurements, measurement)
-
-	sql := make(map[int]string)
-	sql[12] = "select * from abc;"
-	metrics := &api.Metric{
-		SQLs:        sql,
-		InitSQL:     "select * from abc;",
-		NodeStatus:  "healthy",
-		StorageName: "teststore",
-		Description: "test metric",
+func GetTestMeasurementEnvelope() *pb.MeasurementEnvelope {
+	st, err := structpb.NewStruct(map[string]any{"key": "val"})
+	if err != nil {
+		panic(err)
 	}
-
-	return &api.MeasurementEnvelope{
+	measurements := []*structpb.Struct{st}
+	return &pb.MeasurementEnvelope{
 		DBName:           "test",
-		SourceType:       "test_source",
 		MetricName:       "testMetric",
-		CustomTags:       nil,
 		Data:             measurements,
-		MetricDef:        *metrics,
-		RealDbname:       "test",
-		SystemIdentifier: "Identifier",
 	}
 }
+
+// Tests begin from here
 
 func TestNewPinotReceiver(t *testing.T) {
 	server := mockHTTPServer()
@@ -184,11 +171,10 @@ func TestUpdateMeasurements_ValidData(t *testing.T) {
 	assert.NoError(t, err, "NewPinotReceiver should initialize without error")
 
 	// Test valid measurement update
-	msg := getMeasurementEnvelope()
-	logMsg := new(string)
-	err = receiver.UpdateMeasurements(msg, logMsg)
+	msg := GetTestMeasurementEnvelope()
+	reply, err := receiver.UpdateMeasurements(context.Background(), msg)
 	assert.NoError(t, err, "Valid measurement update should succeed")
-	assert.Contains(t, *logMsg, "Successfully inserted batch", "Log message should indicate success")
+	assert.Contains(t, reply.GetLogmsg(), "Successfully inserted batch", "Log message should indicate success")
 }
 
 func TestPinotAPIErrors(t *testing.T) {

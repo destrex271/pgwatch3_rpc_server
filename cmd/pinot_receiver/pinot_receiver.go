@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,8 +15,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
+	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
 )
 
 // PinotReceiver handles sending metrics to a Pinot cluster
@@ -27,7 +28,6 @@ type PinotReceiver struct {
 	sinks.SyncMetricHandler
 }
 
-// NewPinotReceiver creates a new Pinot receiver
 func NewPinotReceiver(controllerURL, tableName, configDir string) (*PinotReceiver, error) {
 	receiver := &PinotReceiver{
 		ControllerURL:     controllerURL,
@@ -206,14 +206,13 @@ func (r *PinotReceiver) createTable(tableConfigPath string) error {
 	return nil
 }
 
-func (r *PinotReceiver) insertData(dbName, metricName string, data, customTags, metricDef []byte) error {
+func (r *PinotReceiver) insertData(dbName, metricName, data, customTags string) error {
 	// Format data for Pinot ingestion
 	ingestionData := map[string]interface{}{
 		"dbname":      dbName,
 		"metric_name": metricName,
-		"data":        string(data),
-		"custom_tags": string(customTags),
-		"metric_def":  string(metricDef),
+		"data":        data,
+		"custom_tags": customTags,
 		"timestamp":   time.Now().UnixMilli(),
 	}
 
@@ -295,34 +294,22 @@ func (r *PinotReceiver) insertData(dbName, metricName string, data, customTags, 
 	return nil
 }
 
-// UpdateMeasurements implements the Receiver interface
-func (r *PinotReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
+func (r *PinotReceiver) UpdateMeasurements(ctx context.Context, msg *pb.MeasurementEnvelope) (*pb.Reply, error) {
 	if err := sinks.IsValidMeasurement(msg); err != nil {
-		return  err
+		return nil, err
 	}
 
-	log.Printf("Received measurement. DBName: '%s', MetricName: '%s', DataPoints: %d",
-		msg.DBName, msg.MetricName, len(msg.Data))
-
-	// Process each measurement
-	metricDefJSON, _ := json.Marshal(msg.MetricDef)
-	customTagsJSON, _ := json.Marshal(msg.CustomTags)
-
-	for _, measurement := range msg.Data {
-		measurementJSON, err := json.Marshal(measurement)
+	customTagsJSON := sinks.GetJson(msg.GetCustomTags())
+	for _, measurement := range msg.GetData() {
+		measurementJSON := sinks.GetJson(measurement)
+		err := r.insertData(msg.GetDBName(), msg.GetMetricName(), measurementJSON, customTagsJSON)
 		if err != nil {
-			*logMsg = fmt.Sprintf("error marshalling measurement: %v", err)
-			return errors.New(*logMsg)
-		}
-
-		err = r.insertData(msg.DBName, msg.MetricName, measurementJSON, customTagsJSON, metricDefJSON)
-		if err != nil {
-			*logMsg = fmt.Sprintf("error inserting data: %v", err)
-			return errors.New(*logMsg)
+			logMsg := fmt.Sprintf("error inserting data: %v", err)
+			return nil, errors.New(logMsg)
 		}
 	}
 
-	log.Println("[INFO]: Inserted batch at : " + time.Now().String())
-	*logMsg = "[INFO]: Successfully inserted batch!"
-	return nil
+	logMsg := "[INFO]: Successfully inserted batch at : " + time.Now().String()
+	log.Println(logMsg)
+	return &pb.Reply{Logmsg: logMsg}, nil
 }
