@@ -8,6 +8,7 @@ import (
 
 	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
+	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -28,11 +29,11 @@ func (r *KafkaProdReceiver) HandleSyncMetric() {
 		}
 
 		var err error
-		switch req.Operation {
-		case api.DeleteOp:
-			err = r.CloseConnectionForDB(req.DbName)
-		case api.AddOp:
-			err = r.AddTopicIfNotExists(req.DbName)
+		switch req.GetOperation() {
+		case pb.SyncOp_AddOp:
+			err = r.CloseConnectionForDB(req.GetDBName())
+		case pb.SyncOp_DeleteOp:
+			err = r.AddTopicIfNotExists(req.GetDBName())
 		}
 
 		if err != nil {
