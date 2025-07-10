@@ -31,8 +31,9 @@ func (handler *SyncMetricHandler) SyncMetric(ctx context.Context, req *pb.SyncRe
 	if req.GetOperation() != pb.SyncOp_AddOp && req.GetOperation() != pb.SyncOp_DeleteOp {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid operation type")
 	}
-	if req.GetDBName() == "" && req.GetMetricName() == "" {
-		return nil, status.Errorf(codes.InvalidArgument, "invalid sync request both DBName and MetricName are empty")
+	// any SyncReq must specify DBName to add/remove it or metric from it
+	if req.GetDBName() == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid sync request DBName can't be empty")
 	}
 
 	opName := "Add"
