@@ -14,9 +14,10 @@ import (
 	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
-func GetJson[K map[string]string | map[string]any | float64 | api.MeasurementEnvelope | api.Metric](value K) string {
+func GetJson[K map[string]string | map[string]any | float64 | api.MeasurementEnvelope | api.Metric | *structpb.Struct](value K) string {
 	jsonString, err := json.Marshal(value)
 	if err != nil {
 		log.Default().Fatal("[ERROR]: Unable to parse Metric Definition")

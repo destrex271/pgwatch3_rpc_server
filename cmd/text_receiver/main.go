@@ -18,7 +18,7 @@ func main() {
 	}
 
 	server := NewTextReceiver(*StorageFolder)
-	if err := sinks.Listen(server, *port); err != nil {
+	if err := sinks.ListenAndServe(server, *port); err != nil {
 		log.Fatal(err)
 	}
 }
