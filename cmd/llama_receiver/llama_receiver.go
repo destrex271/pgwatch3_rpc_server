@@ -12,6 +12,7 @@ import (
 
 	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
+	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rifaideen/talkative"
 )
@@ -117,11 +118,11 @@ func (r *LLamaReceiver) HandleSyncMetric() {
 		}
 		defer conn.Release()
 
-		switch req.Operation {
-		case api.AddOp:
-			_, err = conn.Exec(r.Ctx, `INSERT INTO db(dbname) VALUES($1)`, req.DbName)
-		case api.DeleteOp:
-			_, err = conn.Exec(r.Ctx, `DELETE FROM db WHERE dbanme=$1 CASCADE;`, req.DbName)
+		switch req.GetOperation() {
+		case pb.SyncOp_AddOp:
+			_, err = conn.Exec(r.Ctx, `INSERT INTO db(dbname) VALUES($1)`, req.GetDBName())
+		case pb.SyncOp_DeleteOp:
+			_, err = conn.Exec(r.Ctx, `DELETE FROM db WHERE dbanme=$1 CASCADE;`, req.GetDBName())
 		}
 
 		if err != nil {
