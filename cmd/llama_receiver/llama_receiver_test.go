@@ -176,4 +176,26 @@ func TestLLamaReceiver(t *testing.T) {
 		assert.Greater(t, newInsightsCount, 1, "No new entries inserted in insights table")
 	})
 
+	t.Run("LLama SyncMetricHandler", func(t *testing.T) {
+		var exists bool
+		req := GetTestRPCSyncRequest()
+		query := fmt.Sprintf("SELECT EXISTS (SELECT * FROM db WHERE dbname = '%s')", req.GetDBName())
+
+		recv.SyncMetric(ctx, req)
+		// give some time for handler routine
+		time.Sleep(time.Second)
+
+		err := conn.QueryRow(ctx, query).Scan(&exists)
+		assert.NoError(t, err)
+		assert.True(t, exists)
+
+		req.Operation = pb.SyncOp_DeleteOp
+		recv.SyncMetric(ctx, req)
+		// give some time for handler routine
+		time.Sleep(time.Second)
+
+		err = conn.QueryRow(ctx, query).Scan(&exists)
+		assert.NoError(t, err)
+		assert.False(t, exists)
+	})
 }

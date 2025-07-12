@@ -121,7 +121,7 @@ func (r *LLamaReceiver) HandleSyncMetric() {
 		case pb.SyncOp_AddOp:
 			_, err = conn.Exec(r.Ctx, `INSERT INTO db(dbname) VALUES($1)`, req.GetDBName())
 		case pb.SyncOp_DeleteOp:
-			_, err = conn.Exec(r.Ctx, `DELETE FROM db WHERE dbanme=$1 CASCADE;`, req.GetDBName())
+			_, err = conn.Exec(r.Ctx, `DELETE FROM db WHERE dbname=$1;`, req.GetDBName())
 		}
 
 		if err != nil {
@@ -148,7 +148,7 @@ func (r *LLamaReceiver) SetupTables() error {
 		data JSONB,
 		metric_name TEXT,
 		database_id SERIAL,
-		FOREIGN KEY (database_id) REFERENCES db(id)
+		FOREIGN KEY (database_id) REFERENCES db(id) ON DELETE CASCADE
 	);`)
 	if err != nil {
 		log.Println("[ERROR]: unable to create Measurement table : " + err.Error())
@@ -159,7 +159,7 @@ func (r *LLamaReceiver) SetupTables() error {
 		insight_data TEXT, 
 		database_id BIGSERIAL, 
 		created_at TIMESTAMP NOT NULL DEFAULT(NOW() AT TIME ZONE 'UTC'),
-		FOREIGN KEY (database_id) REFERENCES db(id) 
+		FOREIGN KEY (database_id) REFERENCES db(id) ON DELETE CASCADE
 	)`)
 	if err != nil {
 		log.Println("[ERROR]: unable to create Insigths table : " + err.Error())
