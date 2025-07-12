@@ -21,13 +21,12 @@ func main() {
 		return
 	}
 
-	var server sinks.Receiver
 	server, err := NewS3Receiver(*awsEndpoint, *awsRegion, username, password)
 	if err != nil {
 		log.Fatal("[ERROR]: Unable to create S3 receiver", err)
 	}
 
-	if err := sinks.Listen(server, *port); err != nil {
+	if err := sinks.ListenAndServe(server, *port); err != nil {
 		log.Fatal(err)
 	}
 }

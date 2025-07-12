@@ -24,7 +24,7 @@ func main() {
 		log.Fatal("[ERROR]: Unable to create DuckDB receiver: ", err)
 	}
 
-	if err := sinks.Listen(server, *port); err != nil {
+	if err := sinks.ListenAndServe(server, *port); err != nil {
 		log.Fatal(err)
 	}
 }

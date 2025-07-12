@@ -20,11 +20,6 @@
       "name": "custom_tags",
       "dataType": "STRING",
       "defaultNullValue": "{}"
-    },
-    {
-      "name": "metric_def",
-      "dataType": "STRING",
-      "defaultNullValue": "{}"
     }
   ],
   "metricFieldSpecs": [],
