@@ -23,7 +23,6 @@ func main() {
 		return
 	}
 
-	var server sinks.Receiver
 	server, err := NewLLamaReceiver(*serverURI, *pgURI, context.Background(), *batchSize)
 	if err != nil {
 		log.Fatal(err)
@@ -43,7 +42,7 @@ func main() {
 		}()
 	}
 
-	if err := sinks.Listen(server, *port); err != nil {
+	if err := sinks.ListenAndServe(server, *port); err != nil {
 		log.Fatal(err)
 	}
 }
