@@ -1,91 +1,66 @@
 package main
 
 import (
-	"errors"
+	"context"
 	"log"
 	"os"
 
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
+	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
 
-	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/parquet-go/parquet-go"
 )
 
 type ParquetReceiver struct {
-	FullPath string
+	bufferPath string
 	sinks.SyncMetricHandler
 }
 
 type ParquetSchema struct {
 	DBName            string
-	SourceType        string
 	MetricName        string
 	Data              string // json string
 	Tags              string
-	MetricDefinitions string // json string
-	SysIdentifier     string
 }
 
 func NewParquetReceiver(fullPath string) *ParquetReceiver {
+	// Create buffer storage
+	buffer_path := fullPath + "/parquet_readings"
+	_ = os.MkdirAll(buffer_path, os.ModePerm)
+
 	pr := &ParquetReceiver{
-		FullPath:          fullPath,
+		bufferPath: buffer_path,
 		SyncMetricHandler: sinks.NewSyncMetricHandler(1024),
 	}
-
 	go pr.HandleSyncMetric()
 
 	return pr
 }
 
-func (r ParquetReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
-	if err := sinks.IsValidMeasurement(msg); err != nil {
-		return  err
-	}
+func (r ParquetReceiver) UpdateMeasurements(ctx context.Context, msg *pb.MeasurementEnvelope) (*pb.Reply, error) {
+	dbFilePath := r.bufferPath + "/" + msg.GetDBName() + ".parquet"
 
-	filename := msg.DBName + ".parquet"
-
-	// Create temporary storage and buffer storage
-	buffer_path := r.FullPath + "/parquet_readings"
-	_ = os.MkdirAll(buffer_path, os.ModePerm)
-
-	if _, err := os.Stat(buffer_path + "/" + filename); errors.Is(err, os.ErrNotExist) {
-		_, _ = os.Create(buffer_path + "/" + filename)
-		log.Println("[INFO]: Created File")
-	}
-
-	_, err := os.Open(buffer_path + "/" + filename)
-	if err != nil {
-		log.Println("[ERROR]: Unable to open file", err)
-		return err
-	}
-
-	data_points, err := parquet.ReadFile[ParquetSchema](buffer_path + "/" + filename)
+	data_points, err := parquet.ReadFile[ParquetSchema](dbFilePath)
 	if err != nil {
 		data_points = []ParquetSchema{}
 	}
 
-	log.Println("[INFO]: Updated Measurements for Database: ", msg.DBName)
-	for _, metric_data := range msg.Data {
-		// populate data
-		data := new(ParquetSchema)
-		data.DBName = msg.DBName
-		data.SourceType = msg.SourceType
-		data.MetricName = msg.MetricName
-		data.Data = sinks.GetJson(metric_data)
-		data.MetricDefinitions = sinks.GetJson(msg.MetricDef)
-		data.Tags = sinks.GetJson(msg.CustomTags)
-		data.SysIdentifier = msg.SystemIdentifier
+	data := ParquetSchema{}
+	data.DBName = msg.GetDBName()
+	data.MetricName = msg.GetMetricName()
+	data.Tags = sinks.GetJson(msg.CustomTags)
 
-		// Append to data points
-		data_points = append(data_points, *data)
+	for _, measurement := range msg.GetData() {
+		data.Data = sinks.GetJson(measurement)
+		data_points = append(data_points, data)
 	}
 
-	err = parquet.WriteFile(buffer_path+"/"+filename, data_points)
-
+	err = parquet.WriteFile(dbFilePath, data_points)
 	if err != nil {
-		log.Println("[ERROR]: Unable to write to file.\nStacktrace -> ", err)
-		return err
+		log.Printf("[ERROR]: Unable to write to parquet file %s.", dbFilePath)
+		return nil, err
 	}
+	log.Println("[INFO]: Updated Measurements for Database: ", msg.GetDBName())
 
-	return nil
+	return &pb.Reply{}, nil
 }
