@@ -2,36 +2,29 @@ package sinks
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"fmt"
-	"net/rpc"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
-const RootCA = "./rpc_tests_certs/ca.crt"
-const ServerCert = "./rpc_tests_certs/server.crt"
-const ServerKey = "./rpc_tests_certs/server.key"
 const ServerPort = "5050"
 const ServerAddress = "localhost:5050"
-const TLSServerPort = "6060"
-const TLSServerAddress = "localhost:6060"
 
 type Sink struct {
 	SyncMetricHandler
 }
 
-func (s *Sink) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
-	*logMsg = "Measurements Updated"
-	return nil
+func (s *Sink) UpdateMeasurements(ctx context.Context, msg *pb.MeasurementEnvelope) (*pb.Reply, error) {
+	return &pb.Reply{Logmsg: "Measurements Updated"}, nil
 }
 
 func NewSink() *Sink {
@@ -41,42 +34,39 @@ func NewSink() *Sink {
 }
 
 type Writer struct {
-	client *rpc.Client
+	client pb.ReceiverClient
 }
 
-func NewRPCWriter(TLS bool) *Writer {
-	if !TLS {
-		client, err := rpc.DialHTTP("tcp", ServerAddress)
-		if err != nil {
-			panic(err)
-		}
-		return &Writer{client: client}
+func NewRPCWriter() *Writer {
+	conn, err := grpc.NewClient(ServerAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))	
+	if err != nil  {
+		panic(err)
 	}
 
-	ca, err := os.ReadFile(RootCA)
+	client := pb.NewReceiverClient(conn)
+	return &Writer{
+		client: client,
+	}
+}
+
+func (w *Writer) Write() (string, error) {
+	msg := GetTestMeasurementEnvelope()
+	reply, err := w.client.UpdateMeasurements(context.Background(), msg)	
+	return reply.GetLogmsg(), err
+}
+
+func GetTestMeasurementEnvelope() *pb.MeasurementEnvelope {
+	st, err := structpb.NewStruct(map[string]any{"key": "val"})
 	if err != nil {
 		panic(err)
 	}
-
-	certPool := x509.NewCertPool()
-	certPool.AppendCertsFromPEM(ca)
-	tlsConfig := &tls.Config{
-		RootCAs: certPool,
+	measurements := []*structpb.Struct{st}
+	return &pb.MeasurementEnvelope{
+		DBName:           "test",
+		MetricName:       "testMetric",
+		CustomTags: 	  map[string]string{"tagName": "tagValue"},
+		Data:             measurements,
 	}
-
-	conn, err := tls.Dial("tcp", TLSServerAddress, tlsConfig)
-	if err != nil {
-		panic(err)
-	}
-	return &Writer{client: rpc.NewClient(conn)}
-}
-
-func (w *Writer) Write() string {
-	var logMsg string
-	if err := w.client.Call("Receiver.UpdateMeasurements", &api.MeasurementEnvelope{}, &logMsg); err != nil {
-		panic(err)
-	}	
-	return logMsg
 }
 
 func GetTestRPCSyncRequest() *pb.SyncReq {
@@ -89,30 +79,19 @@ func GetTestRPCSyncRequest() *pb.SyncReq {
 
 // Tests begin from here --------------------------------------------------
 
-func TestHTTPListener(t *testing.T) {
+func TestGRPCListener(t *testing.T) {
 	server := NewSink()
 	go func() {
-		_ = Listen(server, ServerPort)
+		err := ListenAndServe(server, ServerPort)
+		assert.NoError(t, err, "error starting gRPC server")
 	}()
 	time.Sleep(time.Second)
 
-	w := NewRPCWriter(false)
-	logMsg := w.Write()
-	assert.Equal(t, "Measurements Updated", logMsg)
-}
+	w := NewRPCWriter()
+	logMsg, err := w.Write()
 
-func TestTLSListener(t *testing.T) {
-	server := NewSink()
-	_ = os.Setenv("RPC_SERVER_KEY", ServerKey)
-	_ = os.Setenv("RPC_SERVER_CERT", ServerCert)
-	go func() {
-		_ = Listen(server, TLSServerPort)
-	}()
-	time.Sleep(time.Second)
-
-	tw := NewRPCWriter(true)
-	logMsg := tw.Write()
-	assert.Equal(t, "Measurements Updated", logMsg)
+	assert.NoError(t, err, "error writing to sink")
+	assert.Equal(t, logMsg, "Measurements Updated")
 }
 
 func TestSyncMetricHandler_ValidSyncReqs(t *testing.T) {
