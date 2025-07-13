@@ -31,9 +31,9 @@ func (r *KafkaProdReceiver) HandleSyncMetric() {
 		var err error
 		switch req.Operation {
 		case pb.SyncOp_AddOp:
-			err = r.CloseConnectionForDB(req.GetDBName())
-		case pb.SyncOp_DeleteOp:
 			err = r.AddTopicIfNotExists(req.GetDBName())
+		case pb.SyncOp_DeleteOp:
+			err = r.CloseConnectionForDB(req.GetDBName())
 		}
 
 		if err != nil {
@@ -71,6 +71,11 @@ func NewKafkaProducer(host string, topics []string, partitions []int, auto_add b
 }
 
 func (r *KafkaProdReceiver) AddTopicIfNotExists(dbName string) error {
+	_, ok := r.conn_regisrty[dbName]
+	if ok {
+		return nil
+	}
+
 	new_conn, err := kafka.DialLeader(context.Background(), "tcp", r.uri, dbName, 0)
 	if err != nil {
 		return err
@@ -82,8 +87,12 @@ func (r *KafkaProdReceiver) AddTopicIfNotExists(dbName string) error {
 }
 
 func (r *KafkaProdReceiver) CloseConnectionForDB(dbName string) error {
-	err := r.conn_regisrty[dbName].Close()
+	conn, ok := r.conn_regisrty[dbName]
+	if !ok {
+		return nil
+	}
 
+	err := conn.Close()
 	if err != nil {
 		return err
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -47,6 +48,14 @@ func GetTestMeasurementEnvelope() *pb.MeasurementEnvelope {
 	}
 }
 
+func GetTestRPCSyncRequest() *pb.SyncReq {
+	return &pb.SyncReq{
+		DBName:     "test_db",
+		MetricName: "test_metric",
+		Operation:  pb.SyncOp_AddOp,
+	}
+}
+
 var container testcontainers.Container
 var err error
 var ctx = context.Background()
@@ -69,8 +78,8 @@ func TestMain(m *testing.M) {
 
 func TestKafka_UpdateMeasurements(t *testing.T) {
 	kpr, err := NewKafkaProducer("localhost:9092", nil, nil, true)
-	assert.NoError(t, err, "Error encountered while creating kafka producer")
-	assert.NotNil(t, kpr, "Kafka Producer object is nil")
+	require.NoError(t, err, "Error encountered while creating kafka producer")
+	require.NotNil(t, kpr, "Kafka Producer object is nil")
 
 	msg := GetTestMeasurementEnvelope()
 	_, err = kpr.UpdateMeasurements(ctx, msg)
@@ -87,4 +96,26 @@ func TestKafka_UpdateMeasurements(t *testing.T) {
 
 	msg_as_str := sinks.GetJson(msg)
 	assert.True(t, strings.Contains(buf.String(), msg_as_str), "Unable to retrieve measurements from topic")
+}
+
+func TestKafka_SyncMetricHandler(t *testing.T) {
+	kpr, err := NewKafkaProducer("localhost:9092", nil, nil, true)
+	require.NoError(t, err, "Error encountered while creating kafka producer")
+	require.NotNil(t, kpr, "Kafka Producer object is nil")
+
+	req := GetTestRPCSyncRequest()
+	
+	kpr.SyncMetric(ctx, req)
+	// give some time for handler routine
+	time.Sleep(time.Second)
+	_, exists := kpr.conn_regisrty[req.GetDBName()]
+	assert.True(t, exists)
+
+	req.Operation = pb.SyncOp_DeleteOp
+
+	kpr.SyncMetric(ctx, req)
+	// give some time for handler routine
+	time.Sleep(time.Second)
+	_, exists = kpr.conn_regisrty[req.GetDBName()]
+	assert.False(t, exists)
 }
