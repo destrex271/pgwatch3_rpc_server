@@ -1,15 +1,16 @@
 package sinks
 
 import (
+	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net"
 
-	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -26,22 +27,36 @@ func ListenAndServe(receiver pb.ReceiverServer, port string) error {
 	if err != nil {
 		return err
 	}
-	server := grpc.NewServer()
+	server := grpc.NewServer(
+		grpc.UnaryInterceptor(MsgValidationInterceptor),
+	)
 	pb.RegisterReceiverServer(server, receiver)
 	log.Println("[INFO]: Registered Receiver")
 	// if no error it should never return
 	return server.Serve(lis)
 }
 
-func IsValidMeasurement(msg *api.MeasurementEnvelope) error {
-	if len(msg.DBName) == 0 {
-		return errors.New("empty database name")
+func MsgValidationInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {  
+	msg, ok := req.(*pb.MeasurementEnvelope)
+	if ok {
+		if err := IsValidMeasurement(msg); err != nil {
+			return nil, err
+		}
 	}
-	if len(msg.MetricName) == 0 {
-		return errors.New("empty metric name")
+
+    resp, err := handler(ctx, req)  
+    return resp, err  
+}
+
+func IsValidMeasurement(msg *pb.MeasurementEnvelope) error {
+	if msg.GetDBName() == "" {
+		return status.Error(codes.InvalidArgument, "empty database name")
 	}
-	if len(msg.Data) == 0 {
-		return errors.New("no data provided")
+	if msg.GetMetricName() == "" {
+		return status.Error(codes.InvalidArgument, "empty metric name")
+	}
+	if len(msg.GetData()) == 0 {
+		return status.Error(codes.InvalidArgument, "no data provided")
 	}
 	return nil
 }
