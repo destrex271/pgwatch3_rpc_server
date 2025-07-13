@@ -181,18 +181,18 @@ func TestLLamaReceiver(t *testing.T) {
 		req := GetTestRPCSyncRequest()
 		query := fmt.Sprintf("SELECT EXISTS (SELECT * FROM db WHERE dbname = '%s')", req.GetDBName())
 
-		recv.SyncMetric(ctx, req)
-		// give some time for handler routine
-		time.Sleep(time.Second)
+		_, err = recv.SyncMetric(ctx, req)
+		assert.NoError(t, err)
+		time.Sleep(time.Second) // give some time for handler
 
 		err := conn.QueryRow(ctx, query).Scan(&exists)
 		assert.NoError(t, err)
 		assert.True(t, exists)
 
 		req.Operation = pb.SyncOp_DeleteOp
-		recv.SyncMetric(ctx, req)
-		// give some time for handler routine
-		time.Sleep(time.Second)
+		_, err = recv.SyncMetric(ctx, req)
+		assert.NoError(t, err)
+		time.Sleep(time.Second) // give some time for handler
 
 		err = conn.QueryRow(ctx, query).Scan(&exists)
 		assert.NoError(t, err)

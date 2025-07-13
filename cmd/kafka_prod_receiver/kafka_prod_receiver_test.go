@@ -104,18 +104,18 @@ func TestKafka_SyncMetricHandler(t *testing.T) {
 	require.NotNil(t, kpr, "Kafka Producer object is nil")
 
 	req := GetTestRPCSyncRequest()
-	
-	kpr.SyncMetric(ctx, req)
-	// give some time for handler routine
-	time.Sleep(time.Second)
+	_, err = kpr.SyncMetric(ctx, req)
+	assert.NoError(t, err)
+	time.Sleep(time.Second) // give some time handler
+
 	_, exists := kpr.conn_regisrty[req.GetDBName()]
 	assert.True(t, exists)
 
 	req.Operation = pb.SyncOp_DeleteOp
+	_, err = kpr.SyncMetric(ctx, req)
+	assert.NoError(t, err)
+	time.Sleep(time.Second) // give some time handler
 
-	kpr.SyncMetric(ctx, req)
-	// give some time for handler routine
-	time.Sleep(time.Second)
 	_, exists = kpr.conn_regisrty[req.GetDBName()]
 	assert.False(t, exists)
 }
