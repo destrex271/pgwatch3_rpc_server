@@ -10,11 +10,11 @@ import (
 
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
+	testutils "github.com/destrex271/pgwatch3_rpc_server/sinks/test_utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func initContainer(ctx context.Context) (testcontainers.Container, error) {
@@ -33,27 +33,6 @@ func initContainer(ctx context.Context) (testcontainers.Container, error) {
 	}
 
 	return container, nil
-}
-
-func GetTestMeasurementEnvelope() *pb.MeasurementEnvelope {
-	st, err := structpb.NewStruct(map[string]any{"key": "val"})
-	if err != nil {
-		panic(err)
-	}
-	measurements := []*structpb.Struct{st}
-	return &pb.MeasurementEnvelope{
-		DBName:           "test",
-		MetricName:       "testMetric",
-		Data:             measurements,
-	}
-}
-
-func GetTestRPCSyncRequest() *pb.SyncReq {
-	return &pb.SyncReq{
-		DBName:     "test_db",
-		MetricName: "test_metric",
-		Operation:  pb.SyncOp_AddOp,
-	}
 }
 
 var container testcontainers.Container
@@ -81,7 +60,7 @@ func TestKafka_UpdateMeasurements(t *testing.T) {
 	require.NoError(t, err, "Error encountered while creating kafka producer")
 	require.NotNil(t, kpr, "Kafka Producer object is nil")
 
-	msg := GetTestMeasurementEnvelope()
+	msg := testutils.GetTestMeasurementEnvelope()
 	_, err = kpr.UpdateMeasurements(ctx, msg)
 	assert.NoError(t, err, "Error encountered while updating measurements")
 
@@ -103,7 +82,7 @@ func TestKafka_SyncMetricHandler(t *testing.T) {
 	require.NoError(t, err, "Error encountered while creating kafka producer")
 	require.NotNil(t, kpr, "Kafka Producer object is nil")
 
-	req := GetTestRPCSyncRequest()
+	req := testutils.GetTestRPCSyncRequest()
 	_, err = kpr.SyncMetric(ctx, req)
 	assert.NoError(t, err)
 	time.Sleep(time.Second) // give some time handler

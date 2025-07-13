@@ -9,11 +9,10 @@ import (
 	"time"
 
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
-	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
+	testutils "github.com/destrex271/pgwatch3_rpc_server/sinks/test_utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func initContainer(ctx context.Context, User string, Password string, DBName string) (testcontainers.Container, error) {
@@ -36,20 +35,6 @@ func initContainer(ctx context.Context, User string, Password string, DBName str
 	// Delay to allow container to be ready
 	time.Sleep(30 * time.Second)
 	return clickhouseContainer, err
-}
-
-func GetTestMeasurementEnvelope() *pb.MeasurementEnvelope {
-	st, err := structpb.NewStruct(map[string]any{"key": "val"})
-	if err != nil {
-		panic(err)
-	}
-	measurements := []*structpb.Struct{st}
-	return &pb.MeasurementEnvelope{
-		DBName:           "test",
-		MetricName:       "testMetric",
-		CustomTags: 	  map[string]string{"tagName": "tagValue"},
-		Data:             measurements,
-	}
 }
 
 var (
@@ -102,7 +87,7 @@ func TestClickHouseReceiver(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, recv, "error creating clickhouse receiver")
 
-	msg := GetTestMeasurementEnvelope()
+	msg := testutils.GetTestMeasurementEnvelope()
 
 	for cnt := range 5 {
 		_, err = recv.UpdateMeasurements(ctx, msg)

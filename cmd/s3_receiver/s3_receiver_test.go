@@ -6,27 +6,12 @@ import (
 	"os"
 	"testing"
 
-	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
+	testutils "github.com/destrex271/pgwatch3_rpc_server/sinks/test_utils"
 	"github.com/docker/go-connections/nat"
 	"github.com/stretchr/testify/assert"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/localstack"
-	"google.golang.org/protobuf/types/known/structpb"
 )
-
-func GetTestMeasurementEnvelope() *pb.MeasurementEnvelope {
-	st, err := structpb.NewStruct(map[string]any{"key": "val"})
-	if err != nil {
-		panic(err)
-	}
-	measurements := []*structpb.Struct{st}
-	return &pb.MeasurementEnvelope{
-		DBName:           "test",
-		MetricName:       "testMetric",
-		CustomTags: 	  map[string]string{"tagName": "tagValue"},
-		Data:             measurements,
-	}
-}
 
 func initContainer(ctx context.Context) (*localstack.LocalStackContainer, error) {
 	localstackContainer, err := localstack.Run(ctx, "localstack/localstack:1.4.0")
@@ -96,7 +81,7 @@ func TestAddDatabase(t *testing.T) {
 }
 
 func TestUpdateMeasurements(t *testing.T) {
-	msg := GetTestMeasurementEnvelope()
+	msg := testutils.GetTestMeasurementEnvelope()
 	_, err := client.UpdateMeasurements(ctx, msg)
 	assert.NoError(t, err, "error encountered while updating measurements")
 

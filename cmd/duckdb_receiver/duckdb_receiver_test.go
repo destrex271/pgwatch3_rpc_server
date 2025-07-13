@@ -8,24 +8,9 @@ import (
 	"testing"
 
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
-	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
+	testutils "github.com/destrex271/pgwatch3_rpc_server/sinks/test_utils"
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/protobuf/types/known/structpb"
 )
-
-func GetTestMeasurementEnvelope() *pb.MeasurementEnvelope {
-	st, err := structpb.NewStruct(map[string]any{"key": "val"})
-	if err != nil {
-		panic(err)
-	}
-	measurements := []*structpb.Struct{st}
-	return &pb.MeasurementEnvelope{
-		DBName:           "test",
-		MetricName:       "testMetric",
-		CustomTags: 	  map[string]string{"tagName": "tagValue"},
-		Data:             measurements,
-	}
-}
 
 var dbPath string
 
@@ -91,7 +76,7 @@ func TestUpdateMeasurements(t *testing.T) {
 
 	for cnt := range 5 {
 		// Call Update Measurements with dummy data
-		msg := GetTestMeasurementEnvelope()
+		msg := testutils.GetTestMeasurementEnvelope()
 		_, err = dbr.UpdateMeasurements(context.Background(), msg)
 		assert.NoError(t, err)
 

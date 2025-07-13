@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
+	testutils "github.com/destrex271/pgwatch3_rpc_server/sinks/test_utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/testcontainers/testcontainers-go"
 	tcollama "github.com/testcontainers/testcontainers-go/modules/ollama"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 const new_image = "tinyllama_image"
@@ -60,28 +60,6 @@ func initPostgresContainer(ctx context.Context) (*postgres.PostgresContainer, er
 		return nil, err
 	}
 	return postgresContainer, nil
-}
-
-func GetTestMeasurementEnvelope() *pb.MeasurementEnvelope {
-	st, err := structpb.NewStruct(map[string]any{"key": "val"})
-	if err != nil {
-		panic(err)
-	}
-	measurements := []*structpb.Struct{st}
-	return &pb.MeasurementEnvelope{
-		DBName:           "test",
-		MetricName:       "testMetric",
-		CustomTags: 	  map[string]string{"tagName": "tagValue"},
-		Data:             measurements,
-	}
-}
-
-func GetTestRPCSyncRequest() *pb.SyncReq {
-	return &pb.SyncReq{
-		DBName:     "test_db",
-		MetricName: "test_metric",
-		Operation:  pb.SyncOp_AddOp,
-	}
 }
 
 var (
@@ -135,7 +113,7 @@ func TestLLamaReceiver(t *testing.T) {
 	assert.NoError(t, err, "error encountered while acquiring new connection")
 	assert.NotNil(t, conn, "connection obtained is nil")
 
-	msg := GetTestMeasurementEnvelope()
+	msg := testutils.GetTestMeasurementEnvelope()
 
 	t.Run("check setuped tables", func(t *testing.T) {
 		dbs := [3]string{"db", "measurements", "insights"}
@@ -178,7 +156,7 @@ func TestLLamaReceiver(t *testing.T) {
 
 	t.Run("LLama SyncMetricHandler", func(t *testing.T) {
 		var exists bool
-		req := GetTestRPCSyncRequest()
+		req := testutils.GetTestRPCSyncRequest()
 		query := fmt.Sprintf("SELECT EXISTS (SELECT * FROM db WHERE dbname = '%s')", req.GetDBName())
 
 		_, err = recv.SyncMetric(ctx, req)

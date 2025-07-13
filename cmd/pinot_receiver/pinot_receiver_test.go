@@ -9,9 +9,8 @@ import (
 	"testing"
 
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
-	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
+	testutils "github.com/destrex271/pgwatch3_rpc_server/sinks/test_utils"
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // mockHTTPServer creates a mock Pinot controller server for testing
@@ -101,20 +100,6 @@ func setupTestConfigDir(t *testing.T) (string, func()) {
 	return tempDir, cleanup
 }
 
-func GetTestMeasurementEnvelope() *pb.MeasurementEnvelope {
-	st, err := structpb.NewStruct(map[string]any{"key": "val"})
-	if err != nil {
-		panic(err)
-	}
-	measurements := []*structpb.Struct{st}
-	return &pb.MeasurementEnvelope{
-		DBName:           "test",
-		MetricName:       "testMetric",
-		CustomTags: 	  map[string]string{"tagName": "tagValue"},
-		Data:             measurements,
-	}
-}
-
 // Tests begin from here
 
 func TestNewPinotReceiver(t *testing.T) {
@@ -171,7 +156,7 @@ func TestUpdateMeasurements(t *testing.T) {
 	receiver, err := NewPinotReceiver(server.URL, "pgwatch_metrics", configDir)
 	assert.NoError(t, err)
 
-	msg := GetTestMeasurementEnvelope()
+	msg := testutils.GetTestMeasurementEnvelope()
 	ctx, cancel := context.WithCancel(context.Background())
 
 	_, err = receiver.UpdateMeasurements(ctx, msg)

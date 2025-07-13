@@ -8,12 +8,12 @@ import (
 
 	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
+	testutils "github.com/destrex271/pgwatch3_rpc_server/sinks/test_utils"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 const ServerPort = "5050"
@@ -50,31 +50,9 @@ func NewRPCWriter() *Writer {
 }
 
 func (w *Writer) Write() (string, error) {
-	msg := GetTestMeasurementEnvelope()
+	msg := testutils.GetTestMeasurementEnvelope()
 	reply, err := w.client.UpdateMeasurements(context.Background(), msg)	
 	return reply.GetLogmsg(), err
-}
-
-func GetTestMeasurementEnvelope() *pb.MeasurementEnvelope {
-	st, err := structpb.NewStruct(map[string]any{"key": "val"})
-	if err != nil {
-		panic(err)
-	}
-	measurements := []*structpb.Struct{st}
-	return &pb.MeasurementEnvelope{
-		DBName:           "test",
-		MetricName:       "testMetric",
-		CustomTags: 	  map[string]string{"tagName": "tagValue"},
-		Data:             measurements,
-	}
-}
-
-func GetTestRPCSyncRequest() *pb.SyncReq {
-	return &pb.SyncReq{
-		DBName:     "test_database",
-		MetricName: "test_metric",
-		Operation:  pb.SyncOp_AddOp,
-	}
 }
 
 // Tests begin from here --------------------------------------------------
@@ -160,7 +138,7 @@ func TestDefaultHandleSyncMetric(t *testing.T) {
 
 	for range 10 {
 		// issue a channel write
-		_, _ = handler.SyncMetric(context.Background(), GetTestRPCSyncRequest())
+		_, _ = handler.SyncMetric(context.Background(), testutils.GetTestRPCSyncRequest())
 		time.Sleep(10 * time.Millisecond)
 		// Ensure the Channel has been emptied
 		assert.Empty(t, len(handler.syncChannel))
