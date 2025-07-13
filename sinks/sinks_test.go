@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
 	testutils "github.com/destrex271/pgwatch3_rpc_server/sinks/test_utils"
 	"github.com/stretchr/testify/assert"
@@ -49,28 +48,12 @@ func NewRPCWriter() *Writer {
 	}
 }
 
-func (w *Writer) Write() (string, error) {
-	msg := testutils.GetTestMeasurementEnvelope()
+func (w *Writer) Write(msg *pb.MeasurementEnvelope) (string, error) {
 	reply, err := w.client.UpdateMeasurements(context.Background(), msg)	
 	return reply.GetLogmsg(), err
 }
 
 // Tests begin from here --------------------------------------------------
-
-func TestGRPCListener(t *testing.T) {
-	server := NewSink()
-	go func() {
-		err := ListenAndServe(server, ServerPort)
-		assert.NoError(t, err, "error starting gRPC server")
-	}()
-	time.Sleep(time.Second)
-
-	w := NewRPCWriter()
-	logMsg, err := w.Write()
-
-	assert.NoError(t, err, "error writing to sink")
-	assert.Equal(t, logMsg, "Measurements Updated")
-}
 
 func TestSyncMetricHandler_ValidSyncReqs(t *testing.T) {
 	chan_len := 1024
@@ -145,24 +128,57 @@ func TestDefaultHandleSyncMetric(t *testing.T) {
 	}
 }
 
-func TestInvalidMeasurement(t *testing.T) {
-	msg := &api.MeasurementEnvelope{
-		DBName: "",
-	}
+func TestIsValidMeasurement(t *testing.T) {
+	msg := &pb.MeasurementEnvelope{}
 	err := IsValidMeasurement(msg)
-	assert.EqualError(t, err, "empty database name")
+	assert.ErrorIs(t, err, status.Error(codes.InvalidArgument, "empty database name"))
 
-	msg = &api.MeasurementEnvelope{
+	msg = &pb.MeasurementEnvelope{
 		DBName: "dummy",
-		MetricName: "",
 	}
 	err = IsValidMeasurement(msg)
-	assert.EqualError(t, err, "empty metric name")
+	assert.ErrorIs(t, err, status.Error(codes.InvalidArgument, "empty metric name"))
 
-	msg = &api.MeasurementEnvelope{
+	msg = &pb.MeasurementEnvelope{
 		DBName: "dummy",
 		MetricName: "dummy",
 	}
 	err = IsValidMeasurement(msg)
-	assert.EqualError(t, err, "no data provided")
+	assert.ErrorIs(t, err, status.Error(codes.InvalidArgument, "no data provided"))
+
+	msg = testutils.GetTestMeasurementEnvelope()
+	err = IsValidMeasurement(msg)
+	assert.NoError(t, err)
+}
+
+func TestGRPCListener(t *testing.T) {
+	server := NewSink()
+	go func() {
+		err := ListenAndServe(server, ServerPort)
+		assert.NoError(t, err, "error starting gRPC server")
+	}()
+	time.Sleep(time.Second)
+
+	w := NewRPCWriter()
+
+	t.Run("Test Server Connection", func(t *testing.T) {
+		msg := testutils.GetTestMeasurementEnvelope()
+		req := testutils.GetTestRPCSyncRequest()
+
+		logMsg, err := w.Write(msg)
+		assert.NoError(t, err, "error writing to sink")
+		assert.Equal(t, logMsg, "Measurements Updated")
+
+		reply, err := w.client.SyncMetric(context.Background(), req)
+		assert.NoError(t, err, "error writing to sink")
+		assert.Equal(t, reply.GetLogmsg(), fmt.Sprintf("gRPC Receiver Synced: DBName %s MetricName %s Operation %s", req.GetDBName(), req.GetMetricName(), "Add"))
+	})
+
+	t.Run("Test MsgValidation Interceptor", func(t *testing.T) {
+		msg := &pb.MeasurementEnvelope{}
+		logMsg, err := w.Write(msg)
+
+		assert.ErrorIs(t, err, status.Error(codes.InvalidArgument, "empty database name"))
+		assert.Empty(t, logMsg)
+	})
 }
