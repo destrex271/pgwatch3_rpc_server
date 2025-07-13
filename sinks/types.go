@@ -5,15 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
-
-type Receiver interface {
-	UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error
-}
 
 type SyncMetricHandler struct {
 	syncChannel chan *pb.SyncReq
