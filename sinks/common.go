@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 
 	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -28,7 +30,10 @@ func ListenAndServe(receiver pb.ReceiverServer, port string) error {
 		return err
 	}
 	server := grpc.NewServer(
-		grpc.UnaryInterceptor(MsgValidationInterceptor),
+		grpc.ChainUnaryInterceptor(
+			AuthInterceptor,
+			MsgValidationInterceptor,
+		),
 	)
 	pb.RegisterReceiverServer(server, receiver)
 	log.Println("[INFO]: Registered Receiver")
@@ -43,9 +48,31 @@ func MsgValidationInterceptor(ctx context.Context, req any, info *grpc.UnaryServ
 			return nil, err
 		}
 	}
+    return handler(ctx, req)  
+}
 
-    resp, err := handler(ctx, req)  
-    return resp, err  
+var SERVER_USERNAME = os.Getenv("PGWATCH_RPC_SERVER_USERNAME")
+var SERVER_PASSWORD = os.Getenv("PGWATCH_RPC_SERVER_PASSWORD")
+
+func AuthInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	authenticated := true
+
+	if ok && SERVER_USERNAME != "" {
+		clientUsername := md.Get("username")[0]
+		authenticated = (clientUsername == SERVER_USERNAME)
+	}
+
+	if ok && SERVER_PASSWORD != "" {
+		clientPassword := md.Get("password")[0]
+		authenticated = (clientPassword == SERVER_PASSWORD) && authenticated
+	}
+
+	if !authenticated {
+		return nil, status.Error(codes.Unauthenticated, "invalid username or password")
+	}
+
+	return handler(ctx, req)
 }
 
 func IsValidMeasurement(msg *pb.MeasurementEnvelope) error {
