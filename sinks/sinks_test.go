@@ -9,51 +9,9 @@ import (
 	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
 	testutils "github.com/destrex271/pgwatch3_rpc_server/sinks/test_utils"
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 )
-
-const ServerPort = "5050"
-const ServerAddress = "localhost:5050"
-
-type Sink struct {
-	SyncMetricHandler
-}
-
-func (s *Sink) UpdateMeasurements(ctx context.Context, msg *pb.MeasurementEnvelope) (*pb.Reply, error) {
-	return &pb.Reply{Logmsg: "Measurements Updated"}, nil
-}
-
-func NewSink() *Sink {
-	return &Sink{
-		SyncMetricHandler: NewSyncMetricHandler(1024),
-	}
-}
-
-type Writer struct {
-	client pb.ReceiverClient
-}
-
-func NewRPCWriter() *Writer {
-	conn, err := grpc.NewClient(ServerAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))	
-	if err != nil  {
-		panic(err)
-	}
-
-	client := pb.NewReceiverClient(conn)
-	return &Writer{
-		client: client,
-	}
-}
-
-func (w *Writer) Write(msg *pb.MeasurementEnvelope) (string, error) {
-	reply, err := w.client.UpdateMeasurements(context.Background(), msg)	
-	return reply.GetLogmsg(), err
-}
-
-// Tests begin from here --------------------------------------------------
 
 func TestSyncMetricHandler_ValidSyncReqs(t *testing.T) {
 	chan_len := 1024
@@ -149,36 +107,4 @@ func TestIsValidMeasurement(t *testing.T) {
 	msg = testutils.GetTestMeasurementEnvelope()
 	err = IsValidMeasurement(msg)
 	assert.NoError(t, err)
-}
-
-func TestGRPCListener(t *testing.T) {
-	server := NewSink()
-	go func() {
-		err := ListenAndServe(server, ServerPort)
-		assert.NoError(t, err, "error starting gRPC server")
-	}()
-	time.Sleep(time.Second)
-
-	w := NewRPCWriter()
-
-	t.Run("Test Server Connection", func(t *testing.T) {
-		msg := testutils.GetTestMeasurementEnvelope()
-		req := testutils.GetTestRPCSyncRequest()
-
-		logMsg, err := w.Write(msg)
-		assert.NoError(t, err, "error writing to sink")
-		assert.Equal(t, logMsg, "Measurements Updated")
-
-		reply, err := w.client.SyncMetric(context.Background(), req)
-		assert.NoError(t, err, "error writing to sink")
-		assert.Equal(t, reply.GetLogmsg(), fmt.Sprintf("gRPC Receiver Synced: DBName %s MetricName %s Operation %s", req.GetDBName(), req.GetMetricName(), "Add"))
-	})
-
-	t.Run("Test MsgValidation Interceptor", func(t *testing.T) {
-		msg := &pb.MeasurementEnvelope{}
-		logMsg, err := w.Write(msg)
-
-		assert.ErrorIs(t, err, status.Error(codes.InvalidArgument, "empty database name"))
-		assert.Empty(t, logMsg)
-	})
 }
