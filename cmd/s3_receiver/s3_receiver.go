@@ -9,8 +9,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
+	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -90,26 +92,28 @@ func (r *S3Receiver) DBExists(bucketName string) (bool, error) {
 	return exists, err
 }
 
-func (r *S3Receiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
-	if err := sinks.IsValidMeasurement(msg); err != nil {
-		return  err
-	}
-
+func (r *S3Receiver) UpdateMeasurements(ctx context.Context, msg *pb.MeasurementEnvelope) (*pb.Reply, error) {
 	exists, err := r.DBExists(msg.DBName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if !exists {
 		err = r.AddDatabase(msg.DBName)
-		return err
+		return nil, err
 	}
 
-	for _, data := range msg.Data {
+	reply := &pb.Reply{}
+	for _, data := range msg.GetData() {
+		if ctx.Err() != nil {
+			reply.Logmsg = "context cancelled, stopping writer..."
+			return reply, nil
+		}
+
 		// Json data
 		jsonData, err := json.Marshal(data)
 		if err != nil {
-			return err
+			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
 
 		// Get buffer
@@ -125,14 +129,15 @@ func (r *S3Receiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *st
 
 		// Upload data
 		_, err = uploader.Upload(context.TODO(), &s3.PutObjectInput{
-			Bucket: aws.String(msg.DBName),
+			Bucket: aws.String(msg.GetDBName()),
 			Key:    aws.String(objectKey),
 			Body:   buffer,
 		})
+
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	return nil
+	return reply, nil
 }

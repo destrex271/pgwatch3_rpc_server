@@ -1,14 +1,15 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
+	testutils "github.com/destrex271/pgwatch3_rpc_server/sinks/test_utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -99,35 +100,7 @@ func setupTestConfigDir(t *testing.T) (string, func()) {
 	return tempDir, cleanup
 }
 
-// getMeasurementEnvelope creates a test measurement envelope
-func getMeasurementEnvelope() *api.MeasurementEnvelope {
-	measurement := make(map[string]any)
-	measurement["cpu"] = "0.001"
-	measurement["checkpointer"] = "1"
-	var measurements []map[string]any
-	measurements = append(measurements, measurement)
-
-	sql := make(map[int]string)
-	sql[12] = "select * from abc;"
-	metrics := &api.Metric{
-		SQLs:        sql,
-		InitSQL:     "select * from abc;",
-		NodeStatus:  "healthy",
-		StorageName: "teststore",
-		Description: "test metric",
-	}
-
-	return &api.MeasurementEnvelope{
-		DBName:           "test",
-		SourceType:       "test_source",
-		MetricName:       "testMetric",
-		CustomTags:       nil,
-		Data:             measurements,
-		MetricDef:        *metrics,
-		RealDbname:       "test",
-		SystemIdentifier: "Identifier",
-	}
-}
+// Tests begin from here
 
 func TestNewPinotReceiver(t *testing.T) {
 	server := mockHTTPServer()
@@ -173,7 +146,7 @@ func TestInitializePinotTable(t *testing.T) {
 	assert.Contains(t, err.Error(), "schema config file not found", "Error should mention missing schema file")
 }
 
-func TestUpdateMeasurements_ValidData(t *testing.T) {
+func TestUpdateMeasurements(t *testing.T) {
 	server := mockHTTPServer()
 	defer server.Close()
 
@@ -181,14 +154,18 @@ func TestUpdateMeasurements_ValidData(t *testing.T) {
 	defer cleanup()
 
 	receiver, err := NewPinotReceiver(server.URL, "pgwatch_metrics", configDir)
-	assert.NoError(t, err, "NewPinotReceiver should initialize without error")
+	assert.NoError(t, err)
 
-	// Test valid measurement update
-	msg := getMeasurementEnvelope()
-	logMsg := new(string)
-	err = receiver.UpdateMeasurements(msg, logMsg)
-	assert.NoError(t, err, "Valid measurement update should succeed")
-	assert.Contains(t, *logMsg, "Successfully inserted batch", "Log message should indicate success")
+	msg := testutils.GetTestMeasurementEnvelope()
+	ctx, cancel := context.WithCancel(context.Background())
+
+	_, err = receiver.UpdateMeasurements(ctx, msg)
+	assert.NoError(t, err)
+
+	cancel()
+	reply, err := receiver.UpdateMeasurements(ctx, msg)
+	assert.NoError(t, err)
+	assert.Equal(t, reply.GetLogmsg(), "context cancelled, stopping writer...")
 }
 
 func TestPinotAPIErrors(t *testing.T) {

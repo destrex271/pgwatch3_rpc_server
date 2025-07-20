@@ -2,110 +2,54 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
+	testutils "github.com/destrex271/pgwatch3_rpc_server/sinks/test_utils"
 	"github.com/stretchr/testify/assert"
 )
 
-func getMeasurementEnvelope() *api.MeasurementEnvelope {
-	measurement := make(map[string]any)
-	measurement["cpu"] = "0.001"
-	measurement["checkpointer"] = "1"
-	var measurements []map[string]any
-	measurements = append(measurements, measurement)
-
-	sql := make(map[int]string)
-	sql[12] = "select * from abc;"
-	metrics := &api.Metric{
-		SQLs:        sql,
-		InitSQL:     "select * from abc;",
-		NodeStatus:  "healthy",
-		StorageName: "teststore",
-		Description: "test metric",
-	}
-
-	return &api.MeasurementEnvelope{
-		DBName:           "test",
-		SourceType:       "test_source",
-		MetricName:       "testMetric",
-		CustomTags:       nil,
-		Data:             measurements,
-		MetricDef:        *metrics,
-		RealDbname:       "test",
-		SystemIdentifier: "Identifier",
-	}
-}
-
-const TEST_DATABASE_NAME string = "pgwatch_test.duckdb"
-
-var testDBPath string
+var dbPath string
 
 func TestMain(m *testing.M) {
 	currentDir, err := os.Getwd()
 	if err != nil {
-		fmt.Print("error in GetCwd: ", err)
-		os.Exit(1)
+		panic(err)
 	}
 	testDir := filepath.Join(currentDir, "test_tmp")
+
 	err = os.MkdirAll(testDir, 0755)
 	if err != nil {
-		fmt.Print("error in create test directory: ", err)
-		os.Exit(1)
+		panic(err)
 	}
+	dbPath = filepath.Join(testDir, "pgwatch_test.duckdb")
 
-	testDBPath = filepath.Join(testDir, TEST_DATABASE_NAME) // database path
-
-	// run the tests
-	code := m.Run()
-
-	// cleanup
-	_ = os.Remove(testDBPath)
-	_ = os.Remove(testDir)
-	os.Exit(code)
-}
-
-func setupTest() (*DuckDBReceiver, error) {
-	return NewDBDuckReceiver(testDBPath, "measurements")
+	exitCode := m.Run()
+	_ = os.RemoveAll(testDir)
+	os.Exit(exitCode)
 }
 
 func TestInitialize(t *testing.T) {
-	db, err := sql.Open("duckdb", testDBPath)
-	if err != nil {
-		t.Error(err)
-	}
-	dbr := &DuckDBReceiver{
-		Conn:              db,
-		DBName:            testDBPath,
-		TableName:         "measurements",
-		Ctx:               context.Background(),
-		SyncMetricHandler: sinks.NewSyncMetricHandler(1024),
-	}
-
-	dbr.initializeTable()
-	createTableQuery := "CREATE TABLE IF NOT EXISTS " + dbr.TableName + "(dbname VARCHAR, metric_name VARCHAR, data JSON, custom_tags JSON, metric_def JSON, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (dbname, timestamp))"
-	_, err = dbr.Conn.Exec(createTableQuery)
-	if err != nil {
-		t.Error(err)
-	}
+	dbr, err := NewDBDuckReceiver(dbPath, "measurements")
+	assert.NoError(t, err, "error creating duckdb receiver")
 
 	// assert the table creation
-	rows, err := db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name='measurements'")
-	assert.Nil(t, err, "could not to query tables")
+	rows, err := dbr.Conn.Query("SELECT name FROM sqlite_master WHERE type='table' AND name='measurements'")
+	assert.NoError(t, err, "could not to query tables")
 	defer func() {_ = rows.Close()}()
+
 	tableExists := rows.Next()
 	assert.True(t, tableExists, "Measurements table was not created")
 
 	// assert the structure
 	// note - pk and notnull are not INT types but bool types in duckdb
-	columns, err := db.Query("PRAGMA table_info(measurements)")
-	assert.Nil(t, err, "Failed to get table information")
+	columns, err := dbr.Conn.Query("PRAGMA table_info(measurements)")
+	assert.NoError(t, err, "Failed to get table information")
 	defer func() {_ = columns.Close()}()
+
 	columnNames := make(map[string]bool)
 	for columns.Next() {
 		var cid int
@@ -113,47 +57,51 @@ func TestInitialize(t *testing.T) {
 		var notnull bool
 		var dflt_value interface{}
 		var pk bool
+
 		err = columns.Scan(&cid, &name, &type_name, &notnull, &dflt_value, &pk)
-		assert.Nil(t, err, "Failed to scan column information")
+		assert.NoError(t, err, "Failed to scan column information")
 		columnNames[name] = true
 	}
+
 	// assert required columns exist (in this setting.)
-	requiredColumns := []string{"dbname", "metric_name", "data", "custom_tags", "metric_def", "timestamp"}
+	requiredColumns := []string{"dbname", "metric_name", "data", "custom_tags", "timestamp"}
 	for _, col := range requiredColumns {
 		assert.True(t, columnNames[col], fmt.Sprintf("Required column '%s' missing from table", col))
 	}
 }
 
 func TestUpdateMeasurements(t *testing.T) {
+	dbr, err := NewDBDuckReceiver(dbPath, "measurements")
+	assert.NoError(t, err, "error creating duckdb receiver")
 
-	dbr, err := setupTest()
-	if err != nil {
-		t.Error(err)
+	for cnt := range 5 {
+		// Call Update Measurements with dummy data
+		msg := testutils.GetTestMeasurementEnvelope()
+		_, err = dbr.UpdateMeasurements(context.Background(), msg)
+		assert.NoError(t, err)
+
+		// verify data was inserted
+		rows, err := dbr.Conn.Query("SELECT dbname, metric_name, data, custom_tags FROM measurements")
+		assert.NoError(t, err, "Failed to query database")
+		defer func(){_ = rows.Close()}()
+
+		rowCount := 0
+		for rows.Next() {
+			var dbname, metricName, customTags string
+			var data map[string]any
+			err := rows.Scan(&dbname, &metricName, &data, &customTags)
+			assert.NoError(t, err, "Failed to scan row")
+
+			customTagsJSON := sinks.GetJson(msg.GetCustomTags())
+			measurement := sinks.GetJson(msg.GetData()[0])
+
+			assert.Equal(t, msg.GetDBName(), dbname)
+			assert.Equal(t, msg.GetMetricName(), metricName)
+			assert.Equal(t, customTagsJSON, customTags)
+			assert.Equal(t, measurement, sinks.GetJson(data))
+
+			rowCount++
+		}
+		assert.Equalf(t, rowCount, cnt + 1, "Expected %v rows got %v", cnt + 1, rowCount)
 	}
-	defer func() {_ = dbr.Conn.Close()}()
-	// Call Update Measurements with dummy packet
-	msg := getMeasurementEnvelope()
-	logMsg := new(string)
-	err = dbr.UpdateMeasurements(msg, logMsg)
-	// time.Sleep(1 * time.Second)
-	assert.Nil(t, err, *logMsg)
-
-	// Check if root folder created for database
-	if _, err := os.Stat(testDBPath); err != nil {
-		assert.False(t, os.IsNotExist(err), "database was not created")
-	}
-
-	// verify data was inserted
-	rows, err := dbr.Conn.Query("SELECT dbname, metric_name FROM measurements")
-	assert.Nil(t, err, "Failed to query database")
-	defer func(){_ = rows.Close()}()
-
-	rowCount := 0
-	for rows.Next() {
-		var dbname, metricName string
-		err := rows.Scan(&dbname, &metricName)
-		assert.Nil(t, err, "Failed to scan row")
-		rowCount++
-	}
-	assert.Greater(t, rowCount, 0, "No rows found in database")
 }

@@ -2,14 +2,17 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"io"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/cybertec-postgresql/pgwatch/v3/api"
+	"github.com/destrex271/pgwatch3_rpc_server/sinks"
+	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
+	testutils "github.com/destrex271/pgwatch3_rpc_server/sinks/test_utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -32,94 +35,66 @@ func initContainer(ctx context.Context) (testcontainers.Container, error) {
 	return container, nil
 }
 
-func getMeasurementEnvelope() *api.MeasurementEnvelope {
-	measurement := make(map[string]any)
-	measurement["cpu"] = "0.001"
-	measurement["checkpointer"] = "1"
-	var measurements []map[string]any
-	measurements = append(measurements, measurement)
+var container testcontainers.Container
+var err error
+var ctx = context.Background()
 
-	sql := make(map[int]string)
-	sql[12] = "select * from abc;"
-	metrics := &api.Metric{
-		SQLs:        sql,
-		InitSQL:     "select * from abc;",
-		NodeStatus:  "healthy",
-		StorageName: "teststore",
-		Description: "test metric",
+func TestMain(m *testing.M) {
+	container, err = initContainer(ctx)
+	if err != nil {
+		panic(err)
 	}
 
-	return &api.MeasurementEnvelope{
-		DBName:           "test",
-		SourceType:       "test_source",
-		MetricName:       "testMetric",
-		CustomTags:       nil,
-		Data:             measurements,
-		MetricDef:        *metrics,
-		RealDbname:       "test",
-		SystemIdentifier: "Identifier",
-	}
-}
-
-func TestNewKafkaProducer(t *testing.T) {
-	// Create new Producer
-	container, err := initContainer(context.Background())
 	defer func() {
-		t.Log("Terminating test container")
-		_ = container.Terminate(context.Background())
+		_ = container.Terminate(ctx)
 	}()
 
-	if err != nil {
-		t.Log("FAILING!")
-		t.Error(err)
-		t.Log(container.Host(context.Background()))
-	}
-
-	kpr, err := NewKafkaProducer("localhost:9092", nil, nil, true)
-
-	assert.Nil(t, err, "Error encountered while create new kafka producer")
-	assert.NotNil(t, kpr, "Kafka Producer created")
+	exitCode := m.Run()
+	os.Exit(exitCode)
 }
 
-func TestUpdateMeasurements(t *testing.T) {
-	// Create new Producer
-	container, err := initContainer(context.Background())
-	defer func() {
-		t.Log("Terminating test container...")
-		_ = container.Terminate(context.Background())
-	}()
+// Tests begin from here
 
-	if err != nil {
-		t.Fatal(err)
-	}
-
+func TestKafka_UpdateMeasurements(t *testing.T) {
 	kpr, err := NewKafkaProducer("localhost:9092", nil, nil, true)
+	require.NoError(t, err, "Error encountered while creating kafka producer")
+	require.NotNil(t, kpr, "Kafka Producer object is nil")
 
-	assert.Nil(t, err, "Error encountered while create new kafka producer")
-	assert.NotNil(t, kpr, "Kafka Producer created")
-
-	// Send dummy measurement to kafka topic
-	msg := getMeasurementEnvelope()
-	logMsg := new(string)
-	err = kpr.UpdateMeasurements(msg, logMsg)
-
-	// Check if connection was succesfully established
-	assert.Nil(t, err, "Error encoutered while adding new measurements")
+	msg := testutils.GetTestMeasurementEnvelope()
+	_, err = kpr.UpdateMeasurements(ctx, msg)
+	assert.NoError(t, err, "Error encountered while updating measurements")
 
 	// Try to consume data added to topic
 	cmd := []string{"timeout", "10s", "/opt/kafka/bin/kafka-console-consumer.sh", "--bootstrap-server", "localhost:9092", "--topic", "test", "--from-beginning"}
-	_, reader, err := container.Exec(context.Background(), cmd)
+	_, reader, err := container.Exec(ctx, cmd)
 	assert.NoError(t, err)
 
 	buf := new(strings.Builder)
 	_, err = io.Copy(buf, reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// See the logs from the command execution.
-	t.Log(buf)
-	msg_as_str, err := json.Marshal(msg)
 	assert.NoError(t, err)
-	assert.True(t, strings.Contains(buf.String(), string(msg_as_str)), "Unable to retrieve measurements from topic")
+
+	msg_as_str := sinks.GetJson(msg)
+	assert.True(t, strings.Contains(buf.String(), msg_as_str), "Unable to retrieve measurements from topic")
+}
+
+func TestKafka_SyncMetricHandler(t *testing.T) {
+	kpr, err := NewKafkaProducer("localhost:9092", nil, nil, true)
+	require.NoError(t, err, "Error encountered while creating kafka producer")
+	require.NotNil(t, kpr, "Kafka Producer object is nil")
+
+	req := testutils.GetTestRPCSyncRequest()
+	_, err = kpr.SyncMetric(ctx, req)
+	assert.NoError(t, err)
+	time.Sleep(time.Second) // give some time handler
+
+	_, exists := kpr.conn_regisrty[req.GetDBName()]
+	assert.True(t, exists)
+
+	req.Operation = pb.SyncOp_DeleteOp
+	_, err = kpr.SyncMetric(ctx, req)
+	assert.NoError(t, err)
+	time.Sleep(time.Second) // give some time handler
+
+	_, exists = kpr.conn_regisrty[req.GetDBName()]
+	assert.False(t, exists)
 }

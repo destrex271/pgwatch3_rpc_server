@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"log"
 
-	"github.com/cybertec-postgresql/pgwatch/v3/api"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
 	"github.com/segmentio/kafka-go"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type KafkaProdReceiver struct {
@@ -29,11 +29,11 @@ func (r *KafkaProdReceiver) HandleSyncMetric() {
 		}
 
 		var err error
-		switch req.GetOperation() {
+		switch req.Operation {
 		case pb.SyncOp_AddOp:
-			err = r.CloseConnectionForDB(req.GetDBName())
-		case pb.SyncOp_DeleteOp:
 			err = r.AddTopicIfNotExists(req.GetDBName())
+		case pb.SyncOp_DeleteOp:
+			err = r.CloseConnectionForDB(req.GetDBName())
 		}
 
 		if err != nil {
@@ -71,6 +71,11 @@ func NewKafkaProducer(host string, topics []string, partitions []int, auto_add b
 }
 
 func (r *KafkaProdReceiver) AddTopicIfNotExists(dbName string) error {
+	_, ok := r.conn_regisrty[dbName]
+	if ok {
+		return nil
+	}
+
 	new_conn, err := kafka.DialLeader(context.Background(), "tcp", r.uri, dbName, 0)
 	if err != nil {
 		return err
@@ -82,8 +87,12 @@ func (r *KafkaProdReceiver) AddTopicIfNotExists(dbName string) error {
 }
 
 func (r *KafkaProdReceiver) CloseConnectionForDB(dbName string) error {
-	err := r.conn_regisrty[dbName].Close()
+	conn, ok := r.conn_regisrty[dbName]
+	if !ok {
+		return nil
+	}
 
+	err := conn.Close()
 	if err != nil {
 		return err
 	}
@@ -93,47 +102,41 @@ func (r *KafkaProdReceiver) CloseConnectionForDB(dbName string) error {
 	return nil
 }
 
-func (r *KafkaProdReceiver) UpdateMeasurements(msg *api.MeasurementEnvelope, logMsg *string) error {
-	if err := sinks.IsValidMeasurement(msg); err != nil {
-		return  err
-	}
-
+func (r *KafkaProdReceiver) UpdateMeasurements(ctx context.Context, msg *pb.MeasurementEnvelope) (*pb.Reply, error) {
 	// Get connection for database topic
-	conn := r.conn_regisrty[msg.DBName]
-
-	if conn == nil {
-		log.Println("[WARNING]: Connection does not exist for database " + msg.DBName)
+	DBName := msg.GetDBName()
+	conn, ok := r.conn_regisrty[DBName]
+	if !ok {
+		log.Println("[WARNING]: Connection does not exist for database " + DBName)
 		if r.auto_add {
-			log.Println("[INFO]: Adding database " + msg.DBName + " since Auto Add is enabled. You can disable it by restarting the sink with autoadd option as false")
-			err := r.AddTopicIfNotExists(msg.DBName)
+			log.Println("[INFO]: Adding database " + DBName + " since Auto Add is enabled. You can disable it by restarting the sink with autoadd option as false")
+			err := r.AddTopicIfNotExists(DBName)
 			if err != nil {
 				log.Println("[ERROR]: Unable to create new connection")
-				return err
+				return nil, err
 			}
-			conn = r.conn_regisrty[msg.DBName]
+			conn = r.conn_regisrty[DBName]
 		} else {
-			return errors.New("[FATAL] Auto Add not enabled. Please restart the sink with autoadd=true")
+			return nil, status.Error(codes.FailedPrecondition, "auto add not enabled. please restart the sink with autoadd=true")
 		}
 	}
 
 	// Convert MeasurementEnvelope struct to json and write it as message in kafka
 	json_data, err := json.Marshal(msg)
 	if err != nil {
-		*logMsg = "Unable to convert measurements data to json"
-		return err
+		log.Println("Unable to convert measurements data to json")
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	// conn.SetWriteDeadline(time.Now())
 	_, err = conn.WriteMessages(
 		kafka.Message{Value: json_data},
 	)
 
 	if err != nil {
-		*logMsg = "Failed to write messages!"
-		return err
+		log.Println("Failed to write messages!")
+		return nil, err
 	}
 
-	log.Println("[INFO]: Measurements Written to topic - ", msg.DBName)
-
-	return nil
+	log.Println("[INFO]: Measurements Written to topic - ", DBName)
+	return &pb.Reply{}, nil
 }

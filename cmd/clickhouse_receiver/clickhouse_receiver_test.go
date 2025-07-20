@@ -3,210 +3,115 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"reflect"
 	"testing"
 	"time"
 
-	"github.com/cybertec-postgresql/pgwatch/v3/api"
+	"github.com/destrex271/pgwatch3_rpc_server/sinks"
+	testutils "github.com/destrex271/pgwatch3_rpc_server/sinks/test_utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-func initContainer(ctx context.Context, user string, password string, dbname string) (testcontainers.Container, error) {
-
+func initContainer(ctx context.Context, User string, Password string, DBName string) (testcontainers.Container, error) {
 	req := testcontainers.ContainerRequest{
 		Image:        "clickhouse/clickhouse-server:24.7",
 		ExposedPorts: []string{"9000/tcp"},
 		WaitingFor:   wait.ForLog("Logging errors to").WithStartupTimeout(2 * time.Minute),
 		Env: map[string]string{
-			"CLICKHOUSE_DB":       dbname,
-			"CLICKHOUSE_USER":     user,
-			"CLICKHOUSE_PASSWORD": password,
+			"CLICKHOUSE_DB":       DBName,
+			"CLICKHOUSE_USER":     User,
+			"CLICKHOUSE_PASSWORD": Password,
 		},
 	}
 
-	// Create and start the container
 	clickhouseContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 	})
 
-	if err != nil {
-		return nil, err
-	}
-
 	// Delay to allow container to be ready
-	time.Sleep(5 * time.Second)
-
-	return clickhouseContainer, nil
+	time.Sleep(30 * time.Second)
+	return clickhouseContainer, err
 }
 
-func getMeasurementEnvelope() *api.MeasurementEnvelope {
-	measurement := make(map[string]any)
-	measurement["cpu"] = "0.001"
-	measurement["checkpointer"] = "1"
-	var measurements []map[string]any
-	measurements = append(measurements, measurement)
+var (
+	ctx context.Context = context.Background()
+	User string = "clickhouse"
+	Password string = "password"
+	DBName string = "testdb"
+	serverURI string
+)
 
-	sql := make(map[int]string)
-	sql[12] = "select * from abc;"
-	metrics := &api.Metric{
-		SQLs:        sql,
-		InitSQL:     "select * from abc;",
-		NodeStatus:  "healthy",
-		StorageName: "teststore",
-		Description: "test metric",
+func TestMain(m *testing.M) {
+	container, err := initContainer(ctx, User, Password, DBName)
+	if err != nil {
+		panic(err)
 	}
+	defer func() { _ = container.Terminate(ctx) }()
 
-	return &api.MeasurementEnvelope{
-		DBName:           "test",
-		SourceType:       "test_source",
-		MetricName:       "testMetric",
-		CustomTags:       nil,
-		Data:             measurements,
-		MetricDef:        *metrics,
-		RealDbname:       "test",
-		SystemIdentifier: "Identifier",
+	mappedPort, err := container.MappedPort(ctx, "9000")
+	if err != nil {
+		panic(err)
 	}
+	serverURI = fmt.Sprintf("127.0.0.1:%d", mappedPort.Int())
+
+	exitCode := m.Run()
+	os.Exit(exitCode)
 }
+
+// Tests begin from here
 
 func TestGetConnection(t *testing.T) {
-
-	// Variables
-	ctx := context.Background()
-	user := "clickhouse"
-	password := "password"
-	dbname := "testdb"
-
-	// Create new container
-	container, err := initContainer(ctx, user, password, dbname)
-	if err != nil {
-		t.Fatal("[ERROR]: unable to create container. " + err.Error())
-	}
-	defer func() {
-		if err := container.Terminate(context.Background()); err != nil {
-			panic(err)
-		}
-	}()
-
-	mappedPort, err := container.MappedPort(context.Background(), "9000")
-	if err != nil {
-		t.Fatalf("Failed to get mapped port: %s", err)
-	}
-	serverUri := fmt.Sprintf("127.0.0.1:%d", mappedPort.Int())
-	conn, err := GetConnection(user, password, dbname, serverUri, true)
-
-	assert.Nil(t, err, "ecountered error while getting connection")
-	assert.NotNil(t, conn, "conn is null")
+	conn, err := GetConnection(User, Password, DBName, serverURI, true)
+	assert.NoError(t, err)
+	assert.NotNil(t, conn)
 }
 
-func TestNewClickHouse(t *testing.T) {
-
-	// Variables
-	ctx := context.Background()
-	user := "clickhouse"
-	password := "password"
-	dbname := "testdb"
-
-	container, err := initContainer(context.Background(), user, password, dbname)
+func TestClickHouseReceiver(t *testing.T) {
+	container, err := initContainer(ctx, User, Password, DBName)
 	if err != nil {
-		t.Fatal("[ERROR]: unable to create container. " + err.Error())
+		panic(err)
 	}
-	defer func() {
-		if err := container.Terminate(context.Background()); err != nil {
-			panic(err)
+	defer func() { _ = container.Terminate(ctx) }()
+
+	mappedPort, err := container.MappedPort(ctx, "9000")
+	if err != nil {
+		panic(err)
+	}
+	serverURI = fmt.Sprintf("127.0.0.1:%d", mappedPort.Int())
+
+	recv, err := NewClickHouseReceiver(User, Password, DBName, serverURI, true)
+	assert.NoError(t, err)
+	assert.NotNil(t, recv, "error creating clickhouse receiver")
+
+	msg := testutils.GetTestMeasurementEnvelope()
+
+	for cnt := range 5 {
+		_, err = recv.UpdateMeasurements(ctx, msg)
+		assert.NoError(t, err)
+
+		rows, err := recv.Conn.Query(ctx, "select * from Measurements;")
+		assert.NoError(t, err)
+
+		rowCount := 0
+		for rows.Next() {
+			var dbname, metric_name, data string
+			tags := make(map[string]string)
+			var timestamp time.Time
+			dataJson := sinks.GetJson(msg.GetData()[0])
+
+			err := rows.Scan(&dbname, &metric_name, &tags, &data, &timestamp)
+			assert.NoError(t, err, "Failed to scan row")
+			assert.Equal(t, dbname, msg.GetDBName())
+			assert.Equal(t, metric_name, msg.GetMetricName())
+			assert.True(t, reflect.DeepEqual(tags, msg.GetCustomTags()))
+			assert.Equal(t, data, dataJson)
+
+			rowCount++
 		}
-	}()
-
-	mappedPort, err := container.MappedPort(context.Background(), "9000")
-	if err != nil {
-		t.Fatalf("Failed to get mapped port: %s", err)
+		assert.Equalf(t, rowCount, cnt + 1, "Expected %v rows found %v", cnt + 1, rowCount)
 	}
-
-	uri := fmt.Sprintf("127.0.0.1:%d", mappedPort.Int())
-	recv, err := NewClickHouseReceiver(user, password, dbname, uri, true)
-
-	assert.Nil(t, err, "Encountered error while creating new receiver")
-	assert.NotNil(t, recv, "Receiver not created")
-
-	// Check if table was created/exists
-	_, err = recv.Conn.Query(ctx, "select * from Measurements;")
-
-	assert.Nil(t, err, "Measurements table not generated")
-}
-
-func TestInsertMeasurements(t *testing.T) {
-
-	// Variables
-	ctx := context.Background()
-	user := "clickhouse"
-	password := "password"
-	dbname := "testdb"
-
-	// Create Test container
-	container, err := initContainer(ctx, user, password, dbname)
-	if err != nil {
-		t.Fatal("[ERROR]: unable to create container. " + err.Error())
-	}
-	defer func() {
-		if err := container.Terminate(context.Background()); err != nil {
-			panic(err)
-		}
-	}()
-
-	// test data
-	data := getMeasurementEnvelope()
-
-	mappedPort, err := container.MappedPort(context.Background(), "9000")
-	if err != nil {
-		t.Fatalf("Failed to get mapped port: %s", err)
-	}
-
-	uri := fmt.Sprintf("127.0.0.1:%d", mappedPort.Int())
-	recv, err := NewClickHouseReceiver(user, password, dbname, uri, true)
-
-	assert.Nil(t, err, "Encountered error while creating new receiver")
-	assert.NotNil(t, recv, "Receiver not created")
-
-	// Insert Measurements
-	err = recv.InsertMeasurements(data, ctx)
-	assert.Nil(t, err, "error encountered while inserting measurements")
-}
-
-func TestUpdateMeasurements(t *testing.T) {
-	// Variables
-	ctx := context.Background()
-	user := "clickhouse"
-	password := "password"
-	dbname := "testdb"
-
-	// Create Test container
-	container, err := initContainer(ctx, user, password, dbname)
-	if err != nil {
-		t.Fatal("[ERROR]: unable to create container. " + err.Error())
-	}
-	defer func() {
-		if err := container.Terminate(context.Background()); err != nil {
-			panic(err)
-		}
-	}()
-
-	// test data
-	data := getMeasurementEnvelope()
-
-	mappedPort, err := container.MappedPort(context.Background(), "9000")
-	if err != nil {
-		t.Fatalf("Failed to get mapped port: %s", err)
-	}
-
-	uri := fmt.Sprintf("127.0.0.1:%d", mappedPort.Int())
-	recv, err := NewClickHouseReceiver(user, password, dbname, uri, true)
-
-	assert.Nil(t, err, "Encountered error while creating new receiver")
-	assert.NotNil(t, recv, "Receiver not created")
-
-	// Insert Measurements
-	msg := new(string)
-	err = recv.UpdateMeasurements(data, msg)
-	assert.Nil(t, err, "error encountered while updating measurements")
 }
