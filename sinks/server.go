@@ -2,6 +2,7 @@ package sinks
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"log"
 	"net"
@@ -10,6 +11,7 @@ import (
 	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
@@ -19,12 +21,16 @@ func ListenAndServe(receiver pb.ReceiverServer, port string) error {
 	if err != nil {
 		return err
 	}
+
+	creds := LoadTLSCredentials()
 	server := grpc.NewServer(
+		grpc.Creds(creds),
 		grpc.ChainUnaryInterceptor(
 			AuthInterceptor,
 			MsgValidationInterceptor,
 		),
 	)
+
 	pb.RegisterReceiverServer(server, receiver)
 	log.Println("[INFO]: Registered Receiver")
 	// if no error it should never return
@@ -53,6 +59,23 @@ func AuthInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, h
 	}
 
 	return handler(ctx, req)
+}
+
+var SERVER_CERT = os.Getenv("PGWATCH_RPC_SERVER_CERT")
+var SERVER_KEY  = os.Getenv("PGWATCH_RPC_SERVER_KEY")
+
+func LoadTLSCredentials() credentials.TransportCredentials {
+	cert, err := tls.LoadX509KeyPair(SERVER_CERT, SERVER_KEY)
+	if err != nil {
+		// results in grpc.Creds(nil) => ignoring encryption
+		return nil
+	}
+
+	log.Println("Valid cert/key pair detected - enabling TLS")
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+	}
+	return credentials.NewTLS(tlsConfig)
 }
 
 func MsgValidationInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {  
