@@ -2,6 +2,8 @@ package sinks
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"os"
 	"strings"
@@ -13,13 +15,20 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
-const ServerPort = "5050"
-const ServerAddress = "0.0.0.0:5050"
+const PlainServerPort = "5050"
+const PlainServerAddress = "localhost:5050" // CN in test cert is `localhost`
+const TLSServerPort = "6060"
+const TLSServerAddress = "localhost:6060"
+
+const TestRootCA = "./rpc_tests_certs/ca.crt"
+const TestCert = "./rpc_tests_certs/server.crt"
+const TestPrivateKey = "./rpc_tests_certs/server.key"
 
 type Sink struct {
 	SyncMetricHandler
@@ -39,8 +48,30 @@ type Writer struct {
 	client pb.ReceiverClient
 }
 
-func NewRPCWriter() *Writer {
-	conn, err := grpc.NewClient(ServerAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+func NewRPCWriter(withTLS bool) *Writer {
+	var creds credentials.TransportCredentials
+	var address string
+
+	if withTLS {
+		ca, err := os.ReadFile(TestRootCA)
+		if err != nil {
+			panic(err)
+		}
+
+		certPool := x509.NewCertPool()
+		certPool.AppendCertsFromPEM(ca)
+		tlsClientConfig := &tls.Config{
+			RootCAs: certPool,
+		}
+
+		creds = credentials.NewTLS(tlsClientConfig)
+		address = TLSServerAddress
+	} else {
+		creds = insecure.NewCredentials()
+		address = PlainServerAddress
+	}
+
+	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(creds))
 	if err != nil {
 		panic(err)
 	}
@@ -66,15 +97,25 @@ var writer *Writer
 
 func TestMain(m *testing.M) {
 	receiver := NewSink()
-	go func ()  {
-		err := ListenAndServe(receiver, ServerPort)	
+	go func () {
+		err := ListenAndServe(receiver, PlainServerPort)	
 		if err != nil {
 			panic(err)
 		}
 	}()
 	time.Sleep(time.Second)
 
-	writer = NewRPCWriter()
+	SERVER_CERT = TestCert
+	SERVER_KEY = TestPrivateKey
+	go func () {
+		err := ListenAndServe(receiver, TLSServerPort)	
+		if err != nil {
+			panic(err)
+		}
+	}()
+	time.Sleep(time.Second)
+
+	writer = NewRPCWriter(false)
 
 	exitCode := m.Run()
 	os.Exit(exitCode)
@@ -82,27 +123,30 @@ func TestMain(m *testing.M) {
 
 // Tests begin from here
 
-func TestGRPCListener(t *testing.T) {
-	t.Run("Test Server Connection", func(t *testing.T) {
-		msg := testutils.GetTestMeasurementEnvelope()
-		req := testutils.GetTestRPCSyncRequest()
+func Test_gRPCServer(t *testing.T) {
+	msg := testutils.GetTestMeasurementEnvelope()
+	req := testutils.GetTestRPCSyncRequest()
 
-		reply, err := writer.client.UpdateMeasurements(context.Background(), msg)
+	TLSWriter := NewRPCWriter(true)
+	writers := [2]*Writer{writer, TLSWriter}
+
+	for _, w := range writers {
+		reply, err := w.client.UpdateMeasurements(context.Background(), msg)
 		assert.NoError(t, err, "error calling UpdateMeasurements()")
 		assert.Equal(t, reply.GetLogmsg(), "Measurements Updated")
 
-		reply, err = writer.client.SyncMetric(context.Background(), req)
+		reply, err = w.client.SyncMetric(context.Background(), req)
 		assert.NoError(t, err, "error calling SyncMetric()")
-		assert.Equal(t, reply.GetLogmsg(), fmt.Sprintf("gRPC Receiver Synced: DBName %s MetricName %s Operation %s", req.GetDBName(), req.GetMetricName(), "Add"))
-	})
+		assert.Equal(t, fmt.Sprintf("gRPC Receiver Synced: DBName %s MetricName %s Operation %s", req.GetDBName(), req.GetMetricName(), "Add"), reply.GetLogmsg()) 
+	}	
+}
 
-	t.Run("Test MsgValidation Interceptor", func(t *testing.T) {
-		msg := &pb.MeasurementEnvelope{}
+func TestMsgValidationInterceptor(t *testing.T) {
+	msg := &pb.MeasurementEnvelope{}
 
-		reply, err := writer.client.UpdateMeasurements(context.Background(), msg)
-		assert.ErrorIs(t, err, status.Error(codes.InvalidArgument, "empty database name"))
-		assert.Nil(t, reply)
-	})
+	reply, err := writer.client.UpdateMeasurements(context.Background(), msg)
+	assert.ErrorIs(t, err, status.Error(codes.InvalidArgument, "empty database name"))
+	assert.Nil(t, reply)
 }
 
 func TestAuthInterceptor(t *testing.T) {
