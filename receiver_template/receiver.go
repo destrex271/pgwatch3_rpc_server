@@ -76,6 +76,10 @@ func (r Receiver) ReceiverSyncMetricHandler() {
 	}
 }
 
+// All methods have the `(*pb.Reply, error)` return,
+// errors will appear in pgwatch's logs as `[ERROR]` messages,
+// while `pb.Reply{Logmsg: "your-message"}` will appear as `[INFO]` messages.
+
 // Write received Measurements to the desired storage backend
 // 
 // Measurements msg parameter has the following definition:
@@ -88,9 +92,22 @@ func (r Receiver) ReceiverSyncMetricHandler() {
 //   ...
 // }
 // accessible via msg.Get[fieldName]()
-//
-// errors returned will appear in pgwatch's logs as `[ERROR]` messages
-// while `pb.Reply{Logmsg: "msg"}` returned will appear as `[INFO]` messages.
 func (r Receiver) UpdateMeasurements(ctx context.Context, msg *pb.MeasurementEnvelope) (*pb.Reply, error) {
+	return nil, nil
+}
+
+// Optional Custom `SyncMetric()` implementation that overrides
+// `sinks.SyncMetricHandler`'s default one
+//
+// SyncReq has the following definition:
+// type SyncReq struct {
+// 	...
+// 	MetricName string => metric removed from or added to specific source in pgwatch
+// 	DBName string => source name
+// 	Operation SyncOp => either add `pb.SyncOp_AddOp` or delete `pb.SyncOp_DeleteOp` operations
+// 	...
+// }
+// accessible via req.Get[fieldName]()
+func (r Receiver) SyncMetric(ctx context.Context, req *pb.SyncReq) (*pb.Reply, error) {
 	return nil, nil
 }

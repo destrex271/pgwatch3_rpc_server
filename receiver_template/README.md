@@ -61,66 +61,70 @@ This file provides the core sink-specific implementation of the [`pgwatch` gRPC 
 // if any of the above methods (e.g. DefineMetrics()) isn't implemented by the `Receiver` struct, gRPC's default
 // Unimplemented method will be called
 type Receiver struct {
-    // Add Receiver Custom fields here.
-    // e.g. database conn objects
-    
-    // We recommend embeding `sinks.SyncMetricHandler` struct
-    //
-    // It provides a default implementation for 
-    // `SyncMetric()` that writes sync requests to a channel that
-    // can be read from using `item, ok := receiver.GetSyncChannelContent()` 
-    //
-    // Then users should provide an implementation for a method that continuously
-    // reads from the channel and opens/closes resources.
-    //
-    // Or use `SyncMetricHandler.HandleSyncMetric()` that ignores the request but only
-    // reads from the channel to empty it.
-    //
-    // Otherwise, users should implement `SyncMetric()` directly on `Receiver` struct
-    // and directly embed gRPC's `pb.UnimplementedReceiverServer`. 
-    sinks.SyncMetricHandler
+	// Add Receiver Custom fields here.
+	// e.g. database conn objects
+	
+	// We recommend embeding `sinks.SyncMetricHandler` struct
+	//
+	// It provides a default implementation for 
+	// `SyncMetric()` that writes sync requests to a channel that
+	// can be read from using `item, ok := receiver.GetSyncChannelContent()` 
+	//
+	// Then users should provide an implementation for a method that continuously
+	// reads from the channel and opens/closes resources.
+	//
+	// Or use `SyncMetricHandler.HandleSyncMetric()` that ignores the request but only
+	// reads from the channel to empty it.
+	//
+	// Otherwise, users should implement `SyncMetric()` directly on `Receiver` struct
+	// and directly embed gRPC's `pb.UnimplementedReceiverServer`. 
+	sinks.SyncMetricHandler
 }
 
 // create a new `Receiver` object
 func NewReceiver(args ...any) (tr *Receiver) {
-    // initialize `Receiver` required fields here.
-    // e.g. connect to the target database
+	// initialize `Receiver` required fields here.
+	// e.g. connect to the target database
 
-    syncReqsChanLen := 1024
-    recv := &Receiver{
-        // instantiate `SyncMetricHandler()`
-        SyncMetricHandler: sinks.NewSyncMetricHandler(syncReqsChanLen),
-    }
+	syncReqsChanLen := 1024
+	recv := &Receiver{
+		// instantiate `SyncMetricHandler()`
+		SyncMetricHandler: sinks.NewSyncMetricHandler(syncReqsChanLen),
+	}
 
-    // Invoke the `SyncMetric()` handler
-    go recv.ReceiverSyncMetricHandler()
-    // Or go recv.HandleSyncMetric()
+	// Invoke the `SyncMetric()` handler
+	go recv.ReceiverSyncMetricHandler()
+	// Or go recv.HandleSyncMetric()
 
-    return recv
+	return recv
 }
 
 
 // Optional Method for handling `SyncMetric()` requests 
 func (r Receiver) ReceiverSyncMetricHandler() {
-    for {
-        // read from channel
-        req, ok := r.GetSyncChannelContent()
-        if !ok {
-            // channel has been closed
-            return
-        }
+	for {
+		// read from channel
+		req, ok := r.GetSyncChannelContent()
+		if !ok {
+			// channel has been closed
+			return
+		}
 
-        switch req.Operation {
-        case pb.SyncOp_AddOp:
-            // open resources for `req.GetDBName()` and `req.GetMetricName()`.
-        case pb.SyncOp_DeleteOp:
-            // close resources for `req.GetDBName()-req.GetMetricName()`.
-            // 
-            // Note that when `req.GetMetricName()` is "" then pgwatch has removed 
-            // the entire database, you should close resources for all its metrics.
-        }
-    }
+		switch req.Operation {
+		case pb.SyncOp_AddOp:
+			// open resources for `req.GetDBName()` and `req.GetMetricName()`.
+		case pb.SyncOp_DeleteOp:
+			// close resources for `req.GetDBName()-req.GetMetricName()`.
+			// 
+			// Note that when `req.GetMetricName()` is "" then pgwatch has removed 
+			// the entire database, you should close resources for all its metrics.
+		}
+	}
 }
+
+// All methods have the `(*pb.Reply, error)` return,
+// errors will appear in pgwatch's logs as `[ERROR]` messages,
+// while `pb.Reply{Logmsg: "your-message"}` will appear as `[INFO]` messages.
 
 // Write received Measurements to the desired storage backend
 // 
@@ -134,11 +138,24 @@ func (r Receiver) ReceiverSyncMetricHandler() {
 //   ...
 // }
 // accessible via msg.Get[fieldName]()
-//
-// errors returned will appear in pgwatch's logs as `[ERROR]` messages
-// while `pb.Reply{Logmsg: "msg"}` returned will appear as `[INFO]` messages.
 func (r Receiver) UpdateMeasurements(ctx context.Context, msg *pb.MeasurementEnvelope) (*pb.Reply, error) {
-    return nil, nil
+	return nil, nil
+}
+
+// Optional Custom `SyncMetric()` implementation that overrides
+// `sinks.SyncMetricHandler`'s default one
+//
+// SyncReq has the following definition:
+// type SyncReq struct {
+// 	...
+// 	MetricName string => metric removed from or added to specific source in pgwatch
+// 	DBName string => source name
+// 	Operation SyncOp => either add `pb.SyncOp_AddOp` or delete `pb.SyncOp_DeleteOp` operations
+// 	...
+// }
+// accessible via req.Get[fieldName]()
+func (r Receiver) SyncMetric(ctx context.Context, req *pb.SyncReq) (*pb.Reply, error) {
+	return nil, nil
 }
 ```
 
@@ -147,5 +164,6 @@ func (r Receiver) UpdateMeasurements(ctx context.Context, msg *pb.MeasurementEnv
 To start using your newly developed receiver:
 
 ```
+go generate ./sinks/pb # generate golang code from protobuf 
 go run ./cmd/[receiver-dir-name] [OPTIONS]
 ```
