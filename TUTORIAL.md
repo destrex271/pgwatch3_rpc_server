@@ -1,17 +1,18 @@
-# Receiver Template
+# Receiver Dev Tutorial
 
 This provides a minimal tutorial for developing custom receivers.
 
-The repo consists of two main directories: `sinks/` and `cmd/`.
+This repo consists of two main directories: `sinks/` and `cmd/`.
 - The `sinks/` directory contains logic shared by all sinks:
-    - Server registration and startup, gRPC interceptors (auth, message validation), and TLS support.
+    - gRPC Server registration and startup, interceptors (auth, message validation), and TLS support logic.
     - A shared `SyncMetric()` implementation.
 
-- The `cmd/` directory contains sink-specific logic. Each sink has its own folder, which contains:
-    - `main.go`: the entry point for the receiver.
-    - `[receiver_name]_receiver.go`: the implementation of the receiver logic.
+- The `cmd/` directory contains sink-specific logic. 
+	- Each sink has its own folder, which contains:
+		- `main.go`: the entry point for the receiver.
+		- `[receiver_name]_receiver.go`: the implementation of the receiver logic.
 
-To develop a new receiver, create a new `cmd/[receiver-dir-name]` directory containing `main.go` and `[receiver_name]_receiver.go`, 
+To develop a new receiver, create a new `cmd/[receiver-dir-name]` directory containing `main.go` and `[receiver_name]_receiver.go` files, 
 and follow the implementation instructions below.
 
 ## Receiver Files
@@ -25,6 +26,11 @@ This file defines the `main()` function and is responsible for:
 3. Invoking `ListenAndServe()` to start the server.
 
 ```go
+import (
+	...
+	"github.com/destrex271/pgwatch3_rpc_server/sinks"
+)
+
 func main() {
     // Here users should parse any necessary server and 
     // storage-backend flags or env vars (e.g. port number, database uri) 
@@ -53,6 +59,12 @@ func main() {
 This file provides the core sink-specific implementation of the [`pgwatch` gRPC API](https://github.com/cybertec-postgresql/pgwatch/blob/master/api/pb/pgwatch.proto) methods.
 
 ```go
+import (
+	...
+	"github.com/destrex271/pgwatch3_rpc_server/sinks"
+	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
+)
+
 // struct type that implements pgwatch's required gRPC methods:
 // 1. UpdateMeasurements() => Write new measurements to the chosen storage backend
 // 2. SyncMetric() => close/open server resources for metrics/sources removed from or added to pgwatch monitoring
@@ -122,11 +134,12 @@ func (r Receiver) ReceiverSyncMetricHandler() {
 	}
 }
 
-// All methods have the `(*pb.Reply, error)` return,
-// errors will appear in pgwatch's logs as `[ERROR]` messages,
-// while `pb.Reply{Logmsg: "your-message"}` will appear as `[INFO]` messages.
+// All methods have the `(*pb.Reply, error)` return type,
+// if error is returned it will appear in pgwatch's logs as `[ERROR]` messages,
+// if no error and `pb.Reply{Logmsg: "your-message"}` is returned 
+// it will appear in logs as `[INFO]` messages.
 
-// Write received Measurements to the desired storage backend
+// Writes received Measurements to the desired storage backend
 // 
 // Measurements msg parameter has the following definition:
 // type MeasurementEnvelope struct {
@@ -139,6 +152,17 @@ func (r Receiver) ReceiverSyncMetricHandler() {
 // }
 // accessible via msg.Get[fieldName]()
 func (r Receiver) UpdateMeasurements(ctx context.Context, msg *pb.MeasurementEnvelope) (*pb.Reply, error) {
+	// Your storage solution insert logic
+
+	// This will return `[]*structpb.Struct` which is one of protobuf's 
+	// equivalents for pgwatch's measurements data structure `[]map[string]any`
+	// mapping column names to their returned values
+	//
+	// individual elements can be converted back to `map[string]any`
+	// using `msg.GetData()[i].AsMap()` or you can 
+	// directly serialize the whole data to json using `json.Marshal(msg.GetData())`
+	msg.GetData()
+
 	return nil, nil
 }
 
