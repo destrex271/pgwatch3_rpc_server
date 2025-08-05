@@ -2,20 +2,18 @@ package sinks
 
 import (
 	"encoding/json"
-	"log"
 
 	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
-func GetJson[K map[string]string | map[string]any | float64 | *structpb.Struct | []*structpb.Struct | *pb.MeasurementEnvelope](value K) string {
+func GetJson(value any) (string, error) {
 	jsonString, err := json.Marshal(value)
 	if err != nil {
-		log.Default().Fatal("[ERROR]: Unable to parse Metric Definition")
+		return "", err
 	}
-	return string(jsonString)
+	return string(jsonString), nil
 }
 
 func IsValidMeasurement(msg *pb.MeasurementEnvelope) error {
