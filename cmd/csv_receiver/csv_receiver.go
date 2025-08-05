@@ -51,11 +51,15 @@ func (r CSVReceiver) UpdateMeasurements(ctx context.Context, msg *pb.Measurement
 
 	writer := csv.NewWriter(file)
 
-	customTagsJSON := sinks.GetJson(msg.GetCustomTags())
+	customTagsJSON, _ := sinks.GetJson(msg.GetCustomTags())
 	for _, measurement := range msg.GetData() {
+		measurementJson, err := sinks.GetJson(measurement)
+		if err != nil {
+			continue
+		}
 		record := []string{
 			msg.GetMetricName(),
-			sinks.GetJson(measurement),
+			measurementJson,
 			customTagsJSON,
 		}
 

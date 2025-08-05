@@ -48,10 +48,16 @@ func (r ParquetReceiver) UpdateMeasurements(ctx context.Context, msg *pb.Measure
 	data := ParquetSchema{}
 	data.DBName = msg.GetDBName()
 	data.MetricName = msg.GetMetricName()
-	data.Tags = sinks.GetJson(msg.CustomTags)
+	data.Tags, err = sinks.GetJson(msg.CustomTags)
+	if err != nil {
+		return nil, err
+	}
 
 	for _, measurement := range msg.GetData() {
-		data.Data = sinks.GetJson(measurement)
+		data.Data, err = sinks.GetJson(measurement)
+		if err != nil {
+			continue
+		}
 		data_points = append(data_points, data)
 	}
 
