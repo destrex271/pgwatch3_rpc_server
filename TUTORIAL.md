@@ -134,11 +134,6 @@ func (r Receiver) ReceiverSyncMetricHandler() {
 	}
 }
 
-// All methods have the `(*pb.Reply, error)` return type,
-// if error is returned it will appear in pgwatch's logs as `[ERROR]` messages,
-// if no error and `pb.Reply{Logmsg: "your-message"}` is returned 
-// it will appear in logs as `[INFO]` messages.
-
 // Writes received Measurements to the desired storage backend
 // 
 // Measurements msg parameter has the following definition:
@@ -181,6 +176,24 @@ func (r Receiver) UpdateMeasurements(ctx context.Context, msg *pb.MeasurementEnv
 func (r Receiver) SyncMetric(ctx context.Context, req *pb.SyncReq) (*pb.Reply, error) {
 	return nil, nil
 }
+
+// Some Notes:
+
+// All methods have the `(*pb.Reply, error)` return type,
+// if error is returned it will appear in pgwatch's logs as `[ERROR]` messages,
+// if no error and `pb.Reply{Logmsg: "your-message"}` is returned 
+// it will appear in logs as `[INFO]` messages.
+
+
+// If the receiver is intended to accept data from 
+// multiple pgwatch instances concurrently, 
+// handle this within the sink, adding 
+// locks where necessary.
+//
+// Additionally, if these instances share sources,
+// be cautious with `SyncMetric()` delete operations.
+// A source removed by one instance may still be 
+// active in another.
 ```
 
 ## Usage
