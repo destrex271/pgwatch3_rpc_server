@@ -26,24 +26,41 @@ The RPC receiver is treated as the default sink formats and no special changes a
 
 To use a RPC sink you can start pgwatch with the argument: `--sink=rpc://<host>:<port>`.
 
-## Running Custom RPC Sinks
-By default the RPC Server for your sink listens at 0.0.0.0 with the specified port number.
-To start any of the given receivers you can use:
+## Running Sinks
 
-```bash
-# Parquet Receiver
-go run ./cmd/parquet_receiver --port=<port_number_for_sink> --rootFolder=<location_on_disk>
+If you are using pgwatch's gRPC sink with 
+Authentication credentials or TLS configured, you'll 
+need to set the following environment variables, 
+to ensure the server works properly.
 
-# Kafka Receiver
-go run ./cmd/kafka_prod_receiver --port=<port_number_for_sink> --kafkaHost=<host_address_of_kafka> --autoadd=<true/false>
 ```
+# if empty, password is ignored during authentication
+export PGWATCH_RPC_SERVER_USERNAME="username"
+
+# if empty, username is ignored during authentication
+export PGWATCH_RPC_SERVER_PASSWORD="password"
+
+# if not set TLS is not used
+export PGWATCH_RPC_SERVER_CERT="/path/to/server.crt"
+
+# if not set TLS is not used
+export PGWATCH_RPC_SERVER_KEY="/path/to/server.key"
+```
+
+To start any of the provided receivers you can use:
+```bash
+go generate ./sinks/pb # generate golang code from protobuf 
+go run ./cmd/[receiver_dir] [OPTIONS] --port=9999
+```
+By default all sinks will listen at `0.0.0.0` with the specified port number.
 
 Now once your receiver is up you can setup pgwatch as follows:
 ```bash
-go run ./cmd/pgwatch --sources=<postgres://postgres@localhost:5432/postgres> --sink=rpc://<ip/hostname_of_your_sink>:<port_where_recv_is_listening>
+go run ./cmd/pgwatch --sink=grpc://<ip/hostname_of_your_sink>:<port_where_recv_is_listening> [OPTIONS]
 ```
 
-Voila! You have a seamless integration between pgwatch and your custom sink. Try out our various implementations to get a feel of how these receivers feel with your custom pgwatch instances.
+Voila! You have seamless integration between pgwatch and your custom sink.   
+Try out our various implementations to get a feel of how these receivers feel with your custom pgwatch instances.
 
 ## Developing Custom Sinks
 
