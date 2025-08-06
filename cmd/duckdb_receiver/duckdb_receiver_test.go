@@ -92,13 +92,14 @@ func TestUpdateMeasurements(t *testing.T) {
 			err := rows.Scan(&dbname, &metricName, &data, &customTags)
 			assert.NoError(t, err, "Failed to scan row")
 
-			customTagsJSON := sinks.GetJson(msg.GetCustomTags())
-			measurement := sinks.GetJson(msg.GetData()[0])
+			customTagsJSON, _ := sinks.GetJson(msg.GetCustomTags())
+			measurementJson, _ := sinks.GetJson(msg.GetData()[0])
+			dataJson, _ := sinks.GetJson(data)
 
 			assert.Equal(t, msg.GetDBName(), dbname)
 			assert.Equal(t, msg.GetMetricName(), metricName)
 			assert.Equal(t, customTagsJSON, customTags)
-			assert.Equal(t, measurement, sinks.GetJson(data))
+			assert.Equal(t, measurementJson, dataJson)
 
 			rowCount++
 		}

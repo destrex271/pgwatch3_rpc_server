@@ -81,10 +81,14 @@ func (r *DuckDBReceiver) InsertMeasurements(ctx context.Context, data *pb.Measur
 	defer func() {_ = stmt.Close()}()
 
 	for _, measurement := range data.GetData() {
+		measurementJson, err := sinks.GetJson(measurement)
+		if err != nil {
+			continue
+		}
 		_, err = stmt.Exec(
 			data.GetDBName(),
 			data.GetMetricName(),
-			sinks.GetJson(measurement),
+			measurementJson,
 			customTagsJSON,
 			time.Now(),
 		)

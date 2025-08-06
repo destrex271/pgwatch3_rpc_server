@@ -94,7 +94,10 @@ func (r *ClickHouseReceiver) InsertMeasurements(ctx context.Context, data *pb.Me
 	}
 
 	for _, measurement := range data.GetData() {
-		measurementJson := sinks.GetJson(measurement)
+		measurementJson, err := sinks.GetJson(measurement)
+		if err != nil {
+			continue
+		}
 
 		err = batch.Append(
 			data.GetDBName(), 

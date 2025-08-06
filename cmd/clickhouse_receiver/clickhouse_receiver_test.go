@@ -101,7 +101,7 @@ func TestClickHouseReceiver(t *testing.T) {
 			var dbname, metric_name, data string
 			tags := make(map[string]string)
 			var timestamp time.Time
-			dataJson := sinks.GetJson(msg.GetData()[0])
+			dataJson, _ := sinks.GetJson(msg.GetData()[0])
 
 			err := rows.Scan(&dbname, &metric_name, &tags, &data, &timestamp)
 			assert.NoError(t, err, "Failed to scan row")

@@ -295,7 +295,10 @@ func (r *PinotReceiver) insertData(dbName, metricName, data, customTags string) 
 }
 
 func (r *PinotReceiver) UpdateMeasurements(ctx context.Context, msg *pb.MeasurementEnvelope) (*pb.Reply, error) {
-	customTagsJSON := sinks.GetJson(msg.GetCustomTags())
+	customTagsJSON, err := sinks.GetJson(msg.GetCustomTags())
+	if err != nil {
+		return nil, err
+	}
 
 	reply := &pb.Reply{}
 	for _, measurement := range msg.GetData() {
@@ -304,8 +307,11 @@ func (r *PinotReceiver) UpdateMeasurements(ctx context.Context, msg *pb.Measurem
 			return reply, nil
 		}
 
-		measurementJSON := sinks.GetJson(measurement)
-		err := r.insertData(msg.GetDBName(), msg.GetMetricName(), measurementJSON, customTagsJSON)
+		measurementJSON, err := sinks.GetJson(measurement)
+		if err != nil {
+			continue
+		}
+		err = r.insertData(msg.GetDBName(), msg.GetMetricName(), measurementJSON, customTagsJSON)
 		if err != nil {
 			logMsg := fmt.Sprintf("error inserting data: %v", err)
 			return nil, errors.New(logMsg)

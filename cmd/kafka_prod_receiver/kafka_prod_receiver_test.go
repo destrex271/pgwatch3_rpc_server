@@ -73,7 +73,7 @@ func TestKafka_UpdateMeasurements(t *testing.T) {
 	_, err = io.Copy(buf, reader)
 	assert.NoError(t, err)
 
-	msg_as_str := sinks.GetJson(msg)
+	msg_as_str, _ := sinks.GetJson(msg)
 	assert.True(t, strings.Contains(buf.String(), msg_as_str), "Unable to retrieve measurements from topic")
 }
 
