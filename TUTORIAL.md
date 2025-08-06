@@ -177,6 +177,14 @@ func (r Receiver) SyncMetric(ctx context.Context, req *pb.SyncReq) (*pb.Reply, e
 	return nil, nil
 }
 
+// DefineMetrics is called periodically by pgwatch to send the current 
+// metric definitions to remote servers that might want to use them.
+// Its an optional method, and its absence shouldn't affect 
+// receiver functionality.
+func (receiver *Receiver) DefineMetrics(ctx context.Context, metricsStruct *structpb.Struct) (*pb.Reply, error) {
+	return nil, nil
+}
+
 // Some Notes:
 
 // All methods have the `(*pb.Reply, error)` return type,
