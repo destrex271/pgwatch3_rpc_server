@@ -22,7 +22,7 @@ func NewSyncMetricHandler(chanSize int) SyncMetricHandler {
 	return SyncMetricHandler{syncChannel: make(chan *pb.SyncReq, chanSize)}
 }
 
-func (handler *SyncMetricHandler) SyncMetric(ctx context.Context, req *pb.SyncReq) (*pb.Reply, error) {
+func (handler SyncMetricHandler) SyncMetric(ctx context.Context, req *pb.SyncReq) (*pb.Reply, error) {
 	if req.GetOperation() != pb.SyncOp_AddOp && req.GetOperation() != pb.SyncOp_DeleteOp {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid operation type")
 	}

@@ -45,18 +45,15 @@ go run ./cmd/pgwatch --sources=<postgres://postgres@localhost:5432/postgres> --s
 
 Voila! You have a seamless integration between pgwatch and your custom sink. Try out our various implementations to get a feel of how these receivers feel with your custom pgwatch instances.
 
-## Developing custom sinks
+## Developing Custom Sinks
 
-To develop your own sinks you can utilize the template that we have used for each of the example receivers. You can copy the main.go file as it is and use the Receiver interface to write your own the UpdateMeasurements functions.
-You'll need to import the package `github.com/destrex271/pgwatch3_rpc_server/sinks` to utilize the components to build your own sinks.
+To develop your own custom sinks, refer to this mini [tutorial](TUTORIAL.md).
 
-You can refer to our example sinks to develop your own sinks or extend these for your use cases:
+You can also look at our example sinks to help with your implementation or extend them for your own use cases:
 
- - [CSV Receiver](/cmd/csv_receiver/README.md): Store measurements in CSV files
- - [Kafka Receiver](/cmd/kafka_prod_receiver/README.md): Stream measurements using kafka
- - [Parquet Receiver](/cmd/parquet_receiver/README.md): Store measurements in parquet files
- - [Clickhouse Receiver](/cmd/clickhouse_receiver/README.md): Store measurements in OLAP databases like Clickhouse for analytics
- - [Llama Receiver](/cmd/llama_receiver/README.md): Gain performance insights and recommendations based on your measurements using the power of `tinyllama`
- - [S3 Receiver](/cmd/s3_receiver/README.md): Store measurements in AWS S3
-
-To get a simple to use template with no additional configurations, you can use the [text receiver example](/cmd/text_receiver/main.go) provided along with the other receiver examples.
+- [CSV Receiver](/cmd/csv_receiver/README.md): Store measurements in CSV files.
+- [Kafka Receiver](/cmd/kafka_prod_receiver/README.md): Stream measurements using Kafka.
+- [Parquet Receiver](/cmd/parquet_receiver/README.md): Store measurements in Parquet files.
+- [ClickHouse Receiver](/cmd/clickhouse_receiver/README.md): Store measurements in OLAP databases like ClickHouse for analytics.
+- [LLama Receiver](/cmd/llama_receiver/README.md): Gain performance insights and recommendations from your measurements using `tinyllama`.
+- [S3 Receiver](/cmd/s3_receiver/README.md): Store measurements in AWS S3.
