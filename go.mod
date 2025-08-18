@@ -4,6 +4,7 @@ go 1.24.0
 
 require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.28.3
+	github.com/elastic/go-elasticsearch/v8 v8.19.0
 	github.com/marcboeker/go-duckdb v1.8.4
 	github.com/parquet-go/parquet-go v0.23.0
 	github.com/rifaideen/talkative v0.1.2
@@ -16,6 +17,7 @@ require (
 require (
 	github.com/apache/arrow-go/v18 v18.1.0 // indirect
 	github.com/ebitengine/purego v0.8.4 // indirect
+	github.com/elastic/elastic-transport-go/v8 v8.7.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.3.0 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/google/flatbuffers v25.1.24+incompatible // indirect
