@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
+	"fmt"
 	"os"
 
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
@@ -37,6 +37,12 @@ func NewESReceiver(addrs []string, username, password, cacertPath string) (*ESRe
 		return nil, err
 	}
 
+	// Heath Check Ping call
+	_, err = esClient.Info()
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Elasticsearch: %w", err)
+	}
+
 	es := &ESReceiver{
 		esClient: esClient,
 		SyncMetricHandler: sinks.NewSyncMetricHandler(1024),
@@ -60,17 +66,26 @@ func (es *ESReceiver) UpdateMeasurements(ctx context.Context, msg *pb.Measuremen
 		}
 
 		res, err2 := req.Do(ctx, es.esClient)
-		if res != nil {
-			log.Println(res)
-		}
-
 		if err2 != nil {
 			err = errors.Join(err, err2)
+			continue
+		}
+
+		if res != nil {
+			if res.IsError() {
+				var errorBody map[string]any
+				if err2 = json.NewDecoder(res.Body).Decode(&errorBody); err2 == nil {
+					err = errors.Join(err, fmt.Errorf("elasticsearch error [%s]: %v", res.Status(), errorBody))
+				} else {
+					err = errors.Join(err, fmt.Errorf("elasticsearch error [%s]", res.Status()))
+				}
+			}
+			res.Body.Close()
 		}
 	}
 
 	if err != nil {
 		return nil, err
 	}
-	return &pb.Reply{Logmsg: "Measurement inserted."}, nil
+	return &pb.Reply{Logmsg: "Measurement Indexed."}, nil
 }
