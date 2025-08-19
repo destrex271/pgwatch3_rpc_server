@@ -97,7 +97,7 @@ func TestNewESReceiver(t *testing.T) {
 		a.NoError(err)
 
 		var data map[string]any
-		json.NewDecoder(resp.Body).Decode(&data)
+		_ = json.NewDecoder(resp.Body).Decode(&data)
 		a.Equal(float64(1), data["count"])
 	})
 }

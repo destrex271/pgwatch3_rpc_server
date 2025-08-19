@@ -82,7 +82,7 @@ func (es *ESReceiver) UpdateMeasurements(ctx context.Context, msg *pb.Measuremen
 					err = errors.Join(err, fmt.Errorf("elasticsearch error [%s]", res.Status()))
 				}
 			}
-			res.Body.Close()
+			_ = res.Body.Close()
 		}
 	}
 
