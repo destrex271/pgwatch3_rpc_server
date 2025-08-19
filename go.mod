@@ -10,12 +10,15 @@ require (
 	github.com/rifaideen/talkative v0.1.2
 	github.com/segmentio/kafka-go v0.4.47
 	github.com/stretchr/testify v1.10.0
-	github.com/testcontainers/testcontainers-go v0.37.0
+	github.com/testcontainers/testcontainers-go v0.38.0
+	github.com/testcontainers/testcontainers-go/modules/elasticsearch v0.38.0
 	github.com/testcontainers/testcontainers-go/modules/localstack v0.37.0
 )
 
 require (
 	github.com/apache/arrow-go/v18 v18.1.0 // indirect
+	github.com/containerd/errdefs v1.0.0 // indirect
+	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/ebitengine/purego v0.8.4 // indirect
 	github.com/elastic/elastic-transport-go/v8 v8.7.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.3.0 // indirect
@@ -23,7 +26,6 @@ require (
 	github.com/google/flatbuffers v25.1.24+incompatible // indirect
 	github.com/klauspost/cpuid/v2 v2.2.9 // indirect
 	github.com/moby/go-archive v0.1.0 // indirect
-	github.com/moby/sys/atomicwriter v0.1.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.25.5 // indirect
 	github.com/zeebo/xxh3 v1.0.2 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
@@ -67,7 +69,7 @@ require (
 	github.com/cpuguy83/dockercfg v0.3.2 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/distribution/reference v0.6.0 // indirect
-	github.com/docker/docker v28.1.1+incompatible // indirect
+	github.com/docker/docker v28.2.2+incompatible // indirect
 	github.com/docker/go-connections v0.5.0
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect

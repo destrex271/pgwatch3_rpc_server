@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/destrex271/pgwatch3_rpc_server/sinks"
 	"github.com/destrex271/pgwatch3_rpc_server/sinks/pb"
@@ -60,8 +61,9 @@ func (es *ESReceiver) UpdateMeasurements(ctx context.Context, msg *pb.Measuremen
 			continue
 		}
 
+		indexName := strings.ToLower(msg.GetDBName() + "_" + msg.GetMetricName())
 		req := esapi.IndexRequest{
-			Index: msg.GetDBName() + "_" + msg.GetMetricName(), 
+			Index: indexName, 
 			Body: bytes.NewReader(jsonData),
 		}
 
