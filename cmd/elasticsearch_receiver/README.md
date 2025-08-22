@@ -17,7 +17,7 @@ A gRPC server that receives metrics from pgwatch and writes them to Elasticsearc
 -ca-file string
     Certificate Authority file path. (default "./http_ca.crt")
 -port string
-    Port number for the server to listen on. (default "-1")
+    Port number for the server to listen on.
 -user string
     Username for HTTP Basic Authentication. (default "elastic")
 ```
