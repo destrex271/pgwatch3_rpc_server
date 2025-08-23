@@ -107,6 +107,10 @@ github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymF
 github.com/envoyproxy/go-control-plane v0.9.1-0.20191026205805-5f8ba28d4473/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/go-control-plane v0.9.4/go.mod h1:6rpuAdCZL397s3pYoYcLgu1mIlRU8Am5FuJP05cCM98=
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
+github.com/elastic/elastic-transport-go/v8 v8.7.0 h1:OgTneVuXP2uip4BA658Xi6Hfw+PeIOod2rY3GVMGoVE=
+github.com/elastic/elastic-transport-go/v8 v8.7.0/go.mod h1:YLHer5cj0csTzNFXoNQ8qhtGY1GTvSqPnKWKaqQE3Hk=
+github.com/elastic/go-elasticsearch/v8 v8.19.0 h1:VmfBLNRORY7RZL+9hTxBD97ehl9H8Nxf2QigDh6HuMU=
+github.com/elastic/go-elasticsearch/v8 v8.19.0/go.mod h1:F3j9e+BubmKvzvLjNui/1++nJuJxbkhHefbaT0kFKGY=
 github.com/felixge/httpsnoop v1.0.4 h1:NFTV2Zj1bL4mc9sqWACXbQFVBBg2W3GPvqp8/ESS2Wg=
 github.com/felixge/httpsnoop v1.0.4/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
 github.com/go-faster/city v1.0.1 h1:4WAxSZ3V2Ws4QRDrscLEDcibJY8uf41H6AhXDrNDcGw=
@@ -293,6 +297,8 @@ github.com/testcontainers/testcontainers-go v0.38.0 h1:d7uEapLcv2P8AvH8ahLqDMMxd
 github.com/testcontainers/testcontainers-go v0.38.0/go.mod h1:C52c9MoHpWO+C4aqmgSU+hxlR5jlEayWtgYrb8Pzz1w=
 github.com/testcontainers/testcontainers-go/modules/gcloud v0.38.0 h1:viNpRx98HEisJGQqDfkO6zfu24hxwjQfUMVXYyy0InY=
 github.com/testcontainers/testcontainers-go/modules/gcloud v0.38.0/go.mod h1:QoU984nFTb0N6SrDiYOdk4WE+ZHcVEaJBbTPJZvDn74=
+github.com/testcontainers/testcontainers-go/modules/elasticsearch v0.38.0 h1:JnFKnPoIWT+t+3NNLlNalhuPaNZG8e3bThnZOuKN2O4=
+github.com/testcontainers/testcontainers-go/modules/elasticsearch v0.38.0/go.mod h1:IclVCEOnY2XPNhoz2zGvARZU9RlgLiQWgIiyL/kE69w=
 github.com/testcontainers/testcontainers-go/modules/localstack v0.37.0 h1:nPuxUYseqS0eYJg7KDJd95PhoMhdpTnSNtkDLwWFngo=
 github.com/testcontainers/testcontainers-go/modules/localstack v0.37.0/go.mod h1:Mw+N4qqJ5iWbg45yWsdLzICfeCEwvYNudfAHHFqCU8Q=
 github.com/testcontainers/testcontainers-go/modules/ollama v0.33.0 h1:SOfs1xrdhfcbg8v1VL2fKKmC5DFYpQ6Jmr3SIce2ixg=
