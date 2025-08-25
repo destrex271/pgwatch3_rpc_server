@@ -1,0 +1,7 @@
+catalog:
+  pgcatalog:
+    type: sql
+    uri: postgresql://username:password@localhost:5432/database
+    init_catalog_tables: true
+    echo: false
+    pool_pre_ping: false

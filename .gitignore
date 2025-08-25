@@ -1,3 +1,6 @@
 ./*/*/*.txt
 .vscode/
 *pb.go
+*pb2*.py
+__pycache__/
+.pytest_cache/
