@@ -47,10 +47,25 @@ jobs:
     - name: Setup Protobuf
       uses: ./.github/actions/setup-protobuf
 
-    - name: Test
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12' 
+
+    - name: Install dependencies
+      run: |
+        python3 -m pip install --upgrade pip
+        pip install pytest
+        pip install -r requirements.txt
+
+    - name: Golang Tests
       run: |
         go generate ./sinks/pb
         go test -timeout 10m -failfast -v -coverprofile=profile.cov ./...
+
+    - name: Python Tests
+      run: |
+        pytest
 
     - name: Coveralls
       uses: coverallsapp/github-action@v2
