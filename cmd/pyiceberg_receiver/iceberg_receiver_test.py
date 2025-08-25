@@ -1,16 +1,16 @@
 import yaml
 import os
 import pytest
-import shutil
 from testcontainers.postgres import PostgresContainer
-from iceberg_receiver import IcebergReceiver
 from pgwatch_pb2 import MeasurementEnvelope, Reply
 
-@pytest.fixture(scope="function", autouse=True)
-def setup_postgres_catalog():
+@pytest.fixture(scope="module", autouse=True)
+def setup_catalog(tmp_path_factory):
     with PostgresContainer("postgres:16") as postgres:
-        os.rename(".pyiceberg.yaml", ".pyiceberg2.yaml")
-        iceberg_yaml = {
+        tmp_path = tmp_path_factory.getbasetemp()
+        os.environ["PYICEBERG_HOME"] = tmp_path.as_posix()
+
+        test_iceberg_yaml = {
             "catalog": {
                 "pgcatalog": {
                     "uri": postgres.get_connection_url(),
@@ -19,17 +19,21 @@ def setup_postgres_catalog():
                 }
             }
         }
-        with open('.pyiceberg.yaml', 'w') as file:
-            yaml.dump(iceberg_yaml, file, default_flow_style=False, allow_unicode=True)
+
+        test_pyiceberg_file = tmp_path / ".pyiceberg.yaml"
+        with open(test_pyiceberg_file.as_posix(), 'w') as file:
+            yaml.dump(test_iceberg_yaml, file, default_flow_style=False, allow_unicode=True)
 
         yield 
 
-        os.rename(".pyiceberg2.yaml", ".pyiceberg.yaml")
-        shutil.rmtree("./data/")
 
+def test_IcebergReceiver(tmp_path):
+    # Late import to allow `PYICEERG_HOME` env to be
+    # set by `setup_catalog` fixture before 
+    # pyiceberg reads it on init
+    from iceberg_receiver import IcebergReceiver
 
-def test_IcebergReceiver():
-    recv = IcebergReceiver("./data/") 
+    recv = IcebergReceiver(tmp_path.as_posix()) 
     msg = MeasurementEnvelope(DBName="test",MetricName="test")
     reply = recv.UpdateMeasurements(msg, None)
     assert reply == Reply(logmsg="Metrics Inserted in iceberg.")
@@ -39,5 +43,3 @@ def test_IcebergReceiver():
 
     assert pyList[0]["DBName"] == "test"
     assert pyList[0]["MetricName"] == "test"
-
-    recv.catalog.drop_table("pgwatch.metrics")
