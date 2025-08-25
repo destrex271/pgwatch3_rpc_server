@@ -26,6 +26,8 @@ parser.add_argument(
 args = parser.parse_args()
 
 def serve(port: int):
+    """Starts gRPC server listening on port"""
+
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     add_ReceiverServicer_to_server(
         IcebergReceiver(args.icebergDataDir),

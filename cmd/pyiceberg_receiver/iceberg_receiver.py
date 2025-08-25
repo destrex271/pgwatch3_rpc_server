@@ -14,6 +14,15 @@ from pyiceberg.types import (
 
 class IcebergReceiver(ReceiverServicer):
     def __init__(self, icebergDataDir: str):
+        """
+        Creates pgwatch.metrics table in pgcatalog if it doesn't exist.
+
+        The table is partitioned by DBName and MetricName fields.
+
+        Args:
+            icebergDataDir (str): Local file system dir path to store data at.
+        """
+
         catalog = load_catalog("pgcatalog")
         catalog.create_namespace_if_not_exists("pgwatch")
 
@@ -33,7 +42,7 @@ class IcebergReceiver(ReceiverServicer):
         )
 
         tbl = catalog.create_table_if_not_exists(
-            identifier="pgwatch.metrics",
+            identifier=("pgwatch", "metrics"),
             schema=schema,
             location=icebergDataDir,
             partition_spec=partition_spec
