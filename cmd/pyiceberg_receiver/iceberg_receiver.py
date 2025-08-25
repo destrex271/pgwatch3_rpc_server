@@ -41,11 +41,7 @@ class IcebergReceiver(ReceiverServicer):
 
         self.catalog = catalog
         self.tbl = tbl
-        self.arrow_schema = pa.schema([
-            pa.field("DBName", pa.string(), nullable=False),
-            pa.field("MetricName", pa.string(), nullable=False),
-            pa.field("Data", pa.binary(), nullable=False),
-        ])
+        self.arrow_schema = tbl.schema().as_arrow()
 
 
     def UpdateMeasurements(self, request, context):
