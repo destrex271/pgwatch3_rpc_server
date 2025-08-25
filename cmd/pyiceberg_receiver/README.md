@@ -31,6 +31,8 @@ options:
 ```bash
 # generate python gRPC code from protobuf
 python3 -m grpc_tools.protoc -I sinks/pb --python_out=cmd/pyiceberg_receiver --grpc_python_out=cmd/pyiceberg_receiver sinks/pb/pgwatch.proto
+# install dependencies
+pip install -r requirements.txt
 # tell PyIceberg about the dir to look for .pyiceberg.yaml in
 export PYICEBERG_HOME="cmd/pyiceberg_receiver"
 # run the server
