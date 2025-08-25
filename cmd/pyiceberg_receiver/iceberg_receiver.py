@@ -12,7 +12,7 @@ from pyiceberg.types import (
     StringType
 )
 
-class Receiver(ReceiverServicer):
+class IcebergReceiver(ReceiverServicer):
     def __init__(self, icebergDataDir: str):
         catalog = load_catalog("pgcatalog")
         catalog.create_namespace_if_not_exists("pgwatch")
@@ -20,7 +20,7 @@ class Receiver(ReceiverServicer):
         schema = Schema(
             NestedField(field_id=1, name="DBName", field_type=StringType(), required=True),
             NestedField(field_id=2, name="MetricName", field_type=StringType(), required=True),
-            NestedField(field_id=4, name="Data", field_type=StringType(), required=True),
+            NestedField(field_id=3, name="Data", field_type=StringType(), required=True),
         )
 
         partition_spec = PartitionSpec(
@@ -39,6 +39,7 @@ class Receiver(ReceiverServicer):
             partition_spec=partition_spec
         )        
 
+        self.catalog = catalog
         self.tbl = tbl
         self.arrow_schema = pa.schema([
             pa.field("DBName", pa.string(), nullable=False),

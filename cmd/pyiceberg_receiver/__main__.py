@@ -1,7 +1,7 @@
 import grpc
 import argparse
 from concurrent import futures
-from iceberg_receiver import Receiver
+from iceberg_receiver import IcebergReceiver
 from pgwatch_pb2_grpc import add_ReceiverServicer_to_server
 
 parser = argparse.ArgumentParser()
@@ -28,7 +28,7 @@ args = parser.parse_args()
 def serve(port: int):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     add_ReceiverServicer_to_server(
-        Receiver(args.icebergDataDir),
+        IcebergReceiver(args.icebergDataDir),
         server,
     )
     server.add_insecure_port(f"0.0.0.0:{port}")
