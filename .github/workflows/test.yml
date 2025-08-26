@@ -47,10 +47,26 @@ jobs:
     - name: Setup Protobuf
       uses: ./.github/actions/setup-protobuf
 
-    - name: Test
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12' 
+
+    - name: Install dependencies
+      run: |
+        python3 -m pip install --upgrade pip
+        pip install pytest
+        pip install -r cmd/pyiceberg_receiver/requirements.txt
+
+    - name: Golang Tests
       run: |
         go generate ./sinks/pb
-        go test -timeout 10m -failfast -v -coverprofile=profile.cov ./...
+        go test -timeout 20m -failfast -v -coverprofile=profile.cov ./...
+
+    - name: Python Tests
+      run: |
+        python3 -m grpc_tools.protoc -I sinks/pb --python_out=cmd/pyiceberg_receiver --grpc_python_out=cmd/pyiceberg_receiver sinks/pb/pgwatch.proto
+        pytest
 
     - name: Coveralls
       uses: coverallsapp/github-action@v2
