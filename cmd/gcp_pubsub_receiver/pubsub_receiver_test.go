@@ -57,6 +57,7 @@ func TestPubsubReceiver(t *testing.T) {
 	t.Run("Test Pub/Sub Receiver UpdateMeasurements()", func(t *testing.T) {
 		msg := testutils.GetTestMeasurementEnvelope()
 		reply, err := psr.UpdateMeasurements(context.Background(), msg)
+		psr.publisher.Flush()
 
 		a.NoError(err)
 		a.Equal(reply.GetLogmsg(), "Message published.")
