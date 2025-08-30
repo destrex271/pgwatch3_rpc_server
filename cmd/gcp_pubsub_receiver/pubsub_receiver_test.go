@@ -55,16 +55,16 @@ func TestPubsubReceiver(t *testing.T) {
 	a.NotNil(psr)
 
 	t.Run("Test Pub/Sub Receiver UpdateMeasurements()", func(t *testing.T) {
+		// To read the published message from the Pub/Sub server.
+		sub, err := CreateSubscription(psr)
+		a.NoError(err)
+
 		msg := testutils.GetTestMeasurementEnvelope()
 		reply, err := psr.UpdateMeasurements(context.Background(), msg)
 		psr.publisher.Flush()
 
 		a.NoError(err)
 		a.Equal(reply.GetLogmsg(), "Message published.")
-
-		// Try read the published message from the Pub/Sub server.
-		sub, err := CreateSubscription(psr)
-		a.NoError(err)
 
 		ctx, cancel := context.WithCancel(context.Background())
 		err = sub.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
