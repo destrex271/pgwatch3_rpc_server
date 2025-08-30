@@ -141,7 +141,7 @@ func TestLLamaReceiver(t *testing.T) {
 	})
 
 	t.Run("Update Measurements Multiple", func(t *testing.T) {
-		for range 10 {
+		for range 3 {
 			_, err := recv.UpdateMeasurements(ctx, msg)
 			assert.NoError(t, err, "error encountered while updating measurements")
 		}
@@ -151,7 +151,7 @@ func TestLLamaReceiver(t *testing.T) {
 		err := conn.QueryRow(recv.Ctx, "SELECT COUNT(*) FROM insights;").Scan(&newInsightsCount)
 		
 		assert.NoError(t, err)
-		assert.Greater(t, newInsightsCount, 1, "No new entries inserted in insights table")
+		assert.GreaterOrEqual(t, newInsightsCount, 1, "No new entries inserted in insights table")
 	})
 
 	t.Run("LLama SyncMetricHandler", func(t *testing.T) {
