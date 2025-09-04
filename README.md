@@ -1,3 +1,6 @@
+
+> ⚠️ **Archived Repository** — The contents of this project have been moved to [pgwatch-contrib](https://github.com/cybertec-postgresql/pgwatch-contrib) to have a unified place for everything related to pgwatch that cannot be merged into upstream.
+
 [![Tests](https://github.com/destrex271/pgwatch3_rpc_server/actions/workflows/test.yml/badge.svg)](https://github.com/destrex271/pgwatch3_rpc_server/actions/workflows/test.yml)
 [![Coverage Status](https://coveralls.io/repos/github/destrex271/pgwatch3_rpc_server/badge.svg?branch=main)](https://coveralls.io/github/destrex271/pgwatch3_rpc_server?branch=main)
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/destrex271/pgwatch3_rpc_server)
